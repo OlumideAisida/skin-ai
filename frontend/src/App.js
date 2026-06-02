@@ -5,13 +5,13 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 
 const WARM = {
-  cream: "#F5EFE6",
-  beige: "#E8D5B7",
-  tan: "#C9A96E",
-  brown: "#8B6914",
-  darkBrown: "#5C4008",
-  sage: "#A8B89A",
-  softWhite: "#FDFAF6",
+  cream: "#F0E6D3",
+  beige: "#DFC9A8",
+  tan: "#B8924A",
+  brown: "#7A5C2E",
+  darkBrown: "#4A3520",
+  sage: "#8FA882",
+  softWhite: "#FAF3E8",
 };
 
 function ScoreRing({ value, label, color }) {
