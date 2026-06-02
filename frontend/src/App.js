@@ -51,7 +51,7 @@ function App() {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch("http://localhost:8000/history");
+      const res = await fetch("https://skin-ai-production-d736.up.railway.app/history");
       const data = await res.json();
       setHistory(data.reports);
     } catch (err) {
