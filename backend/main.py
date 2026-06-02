@@ -30,12 +30,14 @@ if not api_key:
 client = anthropic.Anthropic(api_key=api_key)
 
 # ── Ensure frames directory exists ──────────────────────────
-FRAMES_DIR = Path("saved_frames")
+# Use persistent volume on Railway, fallback to local for dev
+DATA_DIR = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "."))
+FRAMES_DIR = DATA_DIR / "saved_frames"
 FRAMES_DIR.mkdir(exist_ok=True)
-
+DB_PATH = str(DATA_DIR / "skin_reports.db")
 
 def get_db():
-    conn = sqlite3.connect("skin_reports.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
