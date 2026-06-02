@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
+import { supabase } from "./supabase";
 
 const WARM = {
   cream: "#F5EDE0",
@@ -37,7 +38,7 @@ function ScoreRing({ value, label, color }) {
   );
 }
 
-function App() {
+function App({ session }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [cameraOn, setCameraOn] = useState(false);
@@ -48,10 +49,22 @@ function App() {
   const [history, setHistory] = useState([]);
   const [view, setView] = useState("home");
   const [selectedReport, setSelectedReport] = useState(null);
+  const [deepAnalysis, setDeepAnalysis] = useState(null);
+  const [deepLoading, setDeepLoading] = useState(false);
+
+  const BACKEND = "http://localhost:8000";
+
+  const getToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token;
+  };
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch("https://skin-ai-production-d736.up.railway.app/history");
+      const token = await getToken();
+      const res = await fetch(`${BACKEND}/history`, {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
       const data = await res.json();
       setHistory(data.reports);
     } catch (err) {
@@ -83,24 +96,34 @@ function App() {
     setCameraOn(false);
     setResult(null);
     setScores(null);
+    setDeepAnalysis(null);
   };
 
-  const captureAndAnalyze = async () => {
-    if (!videoRef.current || !cameraOn) return;
-    setError(null);
+  const captureFrame = () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-    const base64Image = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
-    setAnalyzing(true);
+    return canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+  };
+
+  const captureAndAnalyze = async () => {
+    if (!videoRef.current || !cameraOn) return;
+    setError(null);
     setResult(null);
     setScores(null);
+    setDeepAnalysis(null);
+    setAnalyzing(true);
+    const base64Image = captureFrame();
     try {
-      const response = await fetch("https://skin-ai-production-d736.up.railway.app/analyze", {
+      const token = await getToken();
+      const response = await fetch(`${BACKEND}/analyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify({ image: base64Image }),
       });
       const data = await response.json();
@@ -114,8 +137,36 @@ function App() {
     }
   };
 
+  const runDeepAnalysis = async () => {
+    if (!videoRef.current || !cameraOn) return;
+    setDeepLoading(true);
+    setDeepAnalysis(null);
+    const base64Image = captureFrame();
+    try {
+      const token = await getToken();
+      const response = await fetch(`${BACKEND}/analyze/deep`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image: base64Image }),
+      });
+      const data = await response.json();
+      setDeepAnalysis(data.deep_analysis);
+    } catch (err) {
+      setError("Failed to run deep analysis.");
+    } finally {
+      setDeepLoading(false);
+    }
+  };
+
   const deleteReport = async (id) => {
-    await fetch(`https://skin-ai-production-d736.up.railway.app/history/${id}`, { method: "DELETE" });
+    const token = await getToken();
+    await fetch(`${BACKEND}/history/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
     fetchHistory();
     if (selectedReport?.id === id) setSelectedReport(null);
   };
@@ -134,14 +185,8 @@ function App() {
         <table className="w-full border-collapse text-sm" {...props} />
       </div>
     ),
-    th: ({ node, ...props }) => (
-      <th style={{ color: WARM.brown, borderBottomColor: WARM.beige }}
-        className="text-left font-semibold border-b pb-2 pr-4 py-2" {...props} />
-    ),
-    td: ({ node, ...props }) => (
-      <td style={{ color: "#6B4F1A", borderBottomColor: WARM.beige }}
-        className="border-b py-2 pr-4" {...props} />
-    ),
+    th: ({ node, ...props }) => <th style={{ color: WARM.brown, borderBottomColor: WARM.beige }} className="text-left font-semibold border-b pb-2 pr-4 py-2" {...props} />,
+    td: ({ node, ...props }) => <td style={{ color: "#6B4F1A", borderBottomColor: WARM.beige }} className="border-b py-2 pr-4" {...props} />,
     hr: ({ node, ...props }) => <hr style={{ borderColor: WARM.beige }} className="my-4" {...props} />,
     p: ({ node, ...props }) => <p style={{ color: "#6B4F1A" }} className="leading-relaxed mb-2 text-sm" {...props} />,
   };
@@ -150,14 +195,15 @@ function App() {
     <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen">
 
       {/* Nav */}
-      <nav style={{ backgroundColor: WARM.cream, borderBottomColor: WARM.beige }} className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <nav style={{ backgroundColor: WARM.cream, borderBottomColor: WARM.beige }}
+        className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div>
           <h1 style={{ color: WARM.darkBrown }} className="font-bold text-xl tracking-tight">
             Skin<span style={{ color: WARM.tan }}>AI</span>
           </h1>
           <p style={{ color: WARM.tan }} className="text-xs">Your Personal Skin Advisor</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {["home", "scan", "history"].map((v) => (
             <button
               key={v}
@@ -169,19 +215,24 @@ function App() {
               }}
               className="px-4 py-2 rounded-full text-sm font-medium border capitalize transition-all duration-200"
             >
-              {v === "home" ? " Home" : v === "scan" ? " Scan" : " History"}
+              {v === "home" ? "Home" : v === "scan" ? "Scan" : "History"}
             </button>
           ))}
+          <button
+            onClick={async () => { await supabase.auth.signOut(); }}
+            style={{ color: WARM.brown, borderColor: WARM.beige }}
+            className="px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 hover:border-red-300 hover:text-red-400"
+          >
+            Logout
+          </button>
         </div>
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
 
-        {/* ── HOME VIEW ── */}
+        {/* HOME VIEW */}
         {view === "home" && (
           <div className="flex flex-col items-center gap-8">
-
-            {/* Hero */}
             <div className="text-center">
               <h2 style={{ color: WARM.darkBrown }} className="text-4xl font-bold mb-3">
                 Discover What Your<br />Skin Needs Most
@@ -191,17 +242,14 @@ function App() {
               </p>
             </div>
 
-            {/* CTA Card */}
-            <div
-              style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
-              className="w-full max-w-md rounded-3xl border p-6 flex items-center justify-between shadow-sm"
-            >
+            <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+              className="w-full max-w-md rounded-3xl border p-6 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-4">
                 <div style={{ backgroundColor: WARM.beige }}
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl">
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="2">
-    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-  </svg>
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  </svg>
                 </div>
                 <div>
                   <p style={{ color: WARM.darkBrown }} className="font-semibold">Scan your face with AI</p>
@@ -217,7 +265,6 @@ function App() {
               </button>
             </div>
 
-            {/* Last Scan Summary */}
             {history.length > 0 && history[0].scores && (
               <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full max-w-md rounded-3xl border p-6 shadow-sm">
@@ -226,7 +273,7 @@ function App() {
                   {history[0].scores.skin_health}%
                 </p>
                 <p style={{ color: WARM.tan }} className="text-xs mb-5">
-                  Last scan — {history[0].created_at}
+                  Last scan — {new Date(history[0].created_at).toLocaleDateString()}
                 </p>
                 <div className="flex justify-around">
                   <ScoreRing value={history[0].scores.moisture} label="Moisture" color="#A8B89A" />
@@ -236,17 +283,14 @@ function App() {
               </div>
             )}
 
-            {/* Skin Concerns */}
             <div className="w-full max-w-md">
-              <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">
-                Explore by Skin Concern
-              </p>
+              <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">Explore by Skin Concern</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                 { icon: "〇", label: "Oiliness", desc: "T-zone control" },
-{ icon: "〇", label: "Acne", desc: "Breakout care" },
-{ icon: "〇", label: "Glow", desc: "Radiance boost" },
-{ icon: "〇", label: "Protection", desc: "SPF & defense" },
+                  { label: "Oiliness", desc: "T-zone control" },
+                  { label: "Acne", desc: "Breakout care" },
+                  { label: "Glow", desc: "Radiance boost" },
+                  { label: "Protection", desc: "SPF & defense" },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -254,21 +298,18 @@ function App() {
                     className="rounded-2xl border p-4 cursor-pointer hover:shadow-md transition-all"
                     onClick={() => setView("scan")}
                   >
-                    <span className="text-2xl">{item.icon}</span>
                     <p style={{ color: WARM.darkBrown }} className="font-semibold text-sm mt-2">{item.label}</p>
                     <p style={{ color: WARM.tan }} className="text-xs">{item.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
-
           </div>
         )}
 
-        {/* ── SCAN VIEW ── */}
+        {/* SCAN VIEW */}
         {view === "scan" && (
           <div className="flex flex-col items-center gap-6">
-
             <div className="text-center">
               <h2 style={{ color: WARM.darkBrown }} className="text-2xl font-bold">Skin Scan</h2>
               <p style={{ color: WARM.tan }} className="text-sm mt-1">Position your face in good lighting</p>
@@ -289,12 +330,14 @@ function App() {
                     <p style={{ color: WARM.beige }} className="text-sm">Camera is off</p>
                   </div>
                 )}
-                {analyzing && (
+                {(analyzing || deepLoading) && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4"
                     style={{ backgroundColor: "rgba(28,18,8,0.85)" }}>
                     <div style={{ borderColor: WARM.tan, borderTopColor: "transparent" }}
                       className="w-14 h-14 border-4 rounded-full animate-spin" />
-                    <p style={{ color: WARM.beige }} className="text-sm font-medium">Analyzing your skin...</p>
+                    <p style={{ color: WARM.beige }} className="text-sm font-medium">
+                      {deepLoading ? "Running deep analysis..." : "Analyzing your skin..."}
+                    </p>
                   </div>
                 )}
               </div>
@@ -311,13 +354,18 @@ function App() {
                   <>
                     <button onClick={stopCamera}
                       style={{ borderColor: WARM.beige, color: WARM.brown }}
-                      className="px-6 py-3 rounded-full text-sm font-medium border">
+                      className="px-5 py-2.5 rounded-full text-sm font-medium border">
                       Stop
                     </button>
-                    <button onClick={captureAndAnalyze} disabled={analyzing}
-                      style={{ backgroundColor: analyzing ? WARM.beige : WARM.tan }}
-                      className="px-8 py-3 rounded-full text-white font-semibold text-sm shadow-md disabled:cursor-not-allowed">
+                    <button onClick={captureAndAnalyze} disabled={analyzing || deepLoading}
+                      style={{ backgroundColor: WARM.tan }}
+                      className="px-6 py-2.5 rounded-full text-white font-semibold text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                       {analyzing ? "Analyzing..." : "Analyze Skin"}
+                    </button>
+                    <button onClick={runDeepAnalysis} disabled={analyzing || deepLoading}
+                      style={{ backgroundColor: WARM.darkBrown }}
+                      className="px-6 py-2.5 rounded-full text-white font-semibold text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                      {deepLoading ? "Analyzing..." : "Deep Analysis ✦"}
                     </button>
                   </>
                 )}
@@ -326,11 +374,11 @@ function App() {
 
             {error && (
               <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm w-full max-w-lg">
-                ⚠️ {error}
+                {error}
               </div>
             )}
 
-            {/* Scores */}
+            {/* Basic Scores */}
             {scores && (
               <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full max-w-lg rounded-3xl border p-6 shadow-md">
@@ -345,23 +393,60 @@ function App() {
               </div>
             )}
 
-            {/* Report */}
+            {/* Basic Report */}
             {result && (
               <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full max-w-lg rounded-3xl border p-6 shadow-md">
-                <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">
-                  Full Analysis Report
-                </p>
+                <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">Analysis Report</p>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                   {result}
                 </ReactMarkdown>
               </div>
             )}
 
+            {/* Deep Analysis Report */}
+            {deepAnalysis && (
+              <div style={{ backgroundColor: WARM.cream, borderColor: WARM.tan }}
+                className="w-full max-w-lg rounded-3xl border-2 p-6 shadow-md">
+                <div className="flex items-center gap-2 mb-5">
+                  <div style={{ backgroundColor: WARM.tan }} className="px-3 py-1 rounded-full">
+                    <span className="text-white text-xs font-bold tracking-wide">PREMIUM</span>
+                  </div>
+                  <p style={{ color: WARM.darkBrown }} className="font-bold text-base">Deep Analysis Report</p>
+                </div>
+                {deepAnalysis.split("##").filter(s => s.trim()).map((section, i) => {
+                  const lines = section.trim().split("\n").filter(l => l.trim());
+                  const title = lines[0].replace(/^\d+\.\s*/, "").trim();
+                  const content = lines.slice(1);
+                  return (
+                    <div key={i}
+                      style={{ backgroundColor: WARM.softWhite, borderColor: WARM.beige }}
+                      className="rounded-2xl border p-4 mb-3">
+                      <p style={{ color: WARM.brown }}
+                        className="font-semibold text-xs uppercase tracking-wider mb-2">
+                        {title}
+                      </p>
+                      <div>
+                        {content.map((line, j) => {
+                          const clean = line.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").trim();
+                          if (!clean) return null;
+                          return (
+                            <div key={j} className="flex items-start gap-2 mb-1">
+                              <span style={{ color: WARM.tan }} className="mt-0.5 text-xs">▸</span>
+                              <p style={{ color: WARM.darkBrown }} className="text-xs leading-relaxed">{clean}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── HISTORY VIEW ── */}
+        {/* HISTORY VIEW */}
         {view === "history" && (
           <div className="flex gap-6">
             <div className="w-72 shrink-0">
@@ -382,7 +467,7 @@ function App() {
                       className="rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-sm">
                       <div className="flex items-center justify-between mb-2">
                         <span style={{ color: WARM.brown }} className="text-xs font-semibold">
-                          Scan #{report.id}
+                          Scan #{report.id.slice(0, 8)}...
                         </span>
                         <button onClick={(e) => { e.stopPropagation(); deleteReport(report.id); }}
                           style={{ color: WARM.beige }}
@@ -393,23 +478,26 @@ function App() {
                           {report.scores.skin_health}%
                         </p>
                       )}
-                      <p style={{ color: WARM.tan }} className="text-xs mt-1">🕐 {report.created_at}</p>
+                      <p style={{ color: WARM.tan }} className="text-xs mt-1">
+                        {new Date(report.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Detail */}
             <div className="flex-1">
               {selectedReport ? (
                 <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                   className="rounded-3xl border p-6 shadow-md">
                   <div className="flex items-center justify-between mb-4">
                     <p style={{ color: WARM.darkBrown }} className="font-bold text-lg">
-                      Scan #{selectedReport.id}
+                      Scan #{selectedReport.id.slice(0, 8)}...
                     </p>
-                    <p style={{ color: WARM.tan }} className="text-xs">🕐 {selectedReport.created_at}</p>
+                    <p style={{ color: WARM.tan }} className="text-xs">
+                      {new Date(selectedReport.created_at).toLocaleDateString()}
+                    </p>
                   </div>
                   {selectedReport.scores && (
                     <div style={{ backgroundColor: WARM.beige }}
@@ -432,7 +520,6 @@ function App() {
             </div>
           </div>
         )}
-
       </div>
 
       <canvas ref={canvasRef} className="hidden" />
