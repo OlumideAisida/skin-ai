@@ -98,7 +98,7 @@ function App() {
     setResult(null);
     setScores(null);
     try {
-      const response = await fetch("http://localhost:8000/analyze", {
+      const response = await fetch("http://https://skin-ai-production-d736.up.railway.app/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: base64Image }),
@@ -115,7 +115,7 @@ function App() {
   };
 
   const deleteReport = async (id) => {
-    await fetch(`http://localhost:8000/history/${id}`, { method: "DELETE" });
+    await fetch(`http://https://skin-ai-production-d736.up.railway.app/history/${id}`, { method: "DELETE" });
     fetchHistory();
     if (selectedReport?.id === id) setSelectedReport(null);
   };
