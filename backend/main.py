@@ -7,7 +7,11 @@ import sqlite3
 import json
 import base64
 from datetime import datetime
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 from pathlib import Path
 
 load_dotenv()
