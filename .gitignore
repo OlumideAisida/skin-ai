@@ -1,0 +1,16 @@
+# Backend sensitive
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/saved_frames/
+backend/skin_reports.db
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+
+# General
+.DS_Store
+*.pyc
+__pycache__/
