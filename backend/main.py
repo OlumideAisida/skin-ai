@@ -171,17 +171,19 @@ async def analyze_skin(payload: ImagePayload):
             "evenness": 65,
             "severity": 30,
         }
-
-    # ── Step 4: Save everything to database ─────────────────
+# ── Step 4: Save everything to database ─────────────────
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO reports (analysis, scores, frame_path, created_at) VALUES (?, ?, ?, ?)",
-        (analysis_text, json.dumps(scores), str(frame_path), created_at)
-    )
-    conn.commit()
-    conn.close()
-
+    try:
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO reports (analysis, scores, frame_path, created_at) VALUES (?, ?, ?, ?)",
+            (analysis_text, json.dumps(scores), str(frame_path), created_at)
+        )
+        conn.commit()
+        conn.close()
+        print(f"✅ Report saved to {DB_PATH}")
+    except Exception as e:
+        print(f"❌ Failed to save report: {e}")
     return {
         "analysis": analysis_text,
         "scores": scores,
