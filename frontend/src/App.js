@@ -150,8 +150,7 @@ function App() {
     <div style={{ backgroundColor: "#1E1E1E" }} className="min-h-screen">
 
       {/* Nav */}
-      <nav style={{ backgroundColor: "#2C2C2C", borderBottomColor: WARM.beige }}
-  className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <nav style={{ backgroundColor: "#2C2C2C", borderBottomColor: WARM.beige }} className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div>
           <h1 style={{ color: WARM.darkBrown }} className="font-bold text-xl tracking-tight">
             Skin<span style={{ color: WARM.tan }}>AI</span>
