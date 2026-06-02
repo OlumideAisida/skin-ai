@@ -14,13 +14,11 @@ except ImportError:
     pass
 from pathlib import Path
 
-load_dotenv()
-
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://skin-ai-production-d736.up.railway.app"],
+    allow_origins=["http://localhost:3000", "https://skin-ai-production-d736.up.railway.app", "https://skin-ai-two.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
