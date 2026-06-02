@@ -5,13 +5,13 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 
 const WARM = {
-  cream: "#F0E6D3",
+  cream: "#2C2C2C",
   beige: "#DFC9A8",
   tan: "#B8924A",
-  brown: "#7A5C2E",
-  darkBrown: "#4A3520",
+  brown: "#C9A96E",
+  darkBrown: "#F0E6D3",
   sage: "#8FA882",
-  softWhite: "#FAF3E8",
+  softWhite: "#1E1E1E",
 };
 
 function ScoreRing({ value, label, color }) {
@@ -147,11 +147,11 @@ function App() {
   };
 
   return (
-    <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen">
+    <div style={{ backgroundColor: "#1E1E1E" }} className="min-h-screen">
 
       {/* Nav */}
-      <nav style={{ backgroundColor: WARM.cream, borderBottomColor: WARM.beige }}
-        className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <nav style={{ backgroundColor: "#2C2C2C", borderBottomColor: WARM.beige }}
+  className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div>
           <h1 style={{ color: WARM.darkBrown }} className="font-bold text-xl tracking-tight">
             Skin<span style={{ color: WARM.tan }}>AI</span>
