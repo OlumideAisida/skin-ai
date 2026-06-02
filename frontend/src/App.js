@@ -13,7 +13,7 @@ const WARM = {
   brown: "#7A5C2E",
   darkBrown: "#4A3520",
   sage: "#8FA882",
-  softWhite: "#FAF6EF",
+  softWhite: "#EDE0CE",
 };
 
 const fadeUp = {
