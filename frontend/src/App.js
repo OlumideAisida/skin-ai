@@ -243,10 +243,10 @@ function App() {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: "💧", label: "Oiliness", desc: "T-zone control" },
-                  { icon: "🌿", label: "Acne", desc: "Breakout care" },
-                  { icon: "✨", label: "Glow", desc: "Radiance boost" },
-                  { icon: "🛡️", label: "Protection", desc: "SPF & defense" },
+                 { icon: "〇", label: "Oiliness", desc: "T-zone control" },
+{ icon: "〇", label: "Acne", desc: "Breakout care" },
+{ icon: "〇", label: "Glow", desc: "Radiance boost" },
+{ icon: "〇", label: "Protection", desc: "SPF & defense" },
                 ].map((item) => (
                   <div
                     key={item.label}
