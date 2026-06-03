@@ -87,8 +87,8 @@ function HistoryIcon({ active }) {
   );
 }
 
-// Expandable deep analysis section
-function AnalysisSection({ title, icon, summaryItems, detailItems }) {
+// Expandable section — no emojis, bold italic title
+function AnalysisSection({ title, summaryItems, detailItems }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <motion.div
@@ -97,12 +97,9 @@ function AnalysisSection({ title, icon, summaryItems, detailItems }) {
       className="rounded-2xl border p-4 mb-3"
     >
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-base">{icon}</span>
-          <p style={{ color: WARM.brown }} className="font-semibold text-xs uppercase tracking-wider">
-            {title}
-          </p>
-        </div>
+        <p style={{ color: WARM.brown }} className="font-bold italic text-xs uppercase tracking-wider">
+          {title}
+        </p>
         {detailItems && detailItems.length > 0 && (
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -145,7 +142,7 @@ function AnalysisSection({ title, icon, summaryItems, detailItems }) {
 }
 
 // Paywall modal
-function PaywallModal({ onSubscribe, onClose, loading }) {
+function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -162,7 +159,6 @@ function PaywallModal({ onSubscribe, onClose, loading }) {
         style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
         className="w-full max-w-sm rounded-3xl border p-8 shadow-2xl"
       >
-        {/* Icon */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -170,24 +166,25 @@ function PaywallModal({ onSubscribe, onClose, loading }) {
           style={{ backgroundColor: WARM.tan }}
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 shadow-md"
         >
-          <span className="text-2xl">✦</span>
+          <span className="text-white font-bold text-xl">✦</span>
         </motion.div>
 
         <h2 style={{ color: WARM.darkBrown }} className="text-xl font-bold text-center mb-2">
-          Unlock Deep Analysis
+          {concernContext ? `Unlock ${concernContext} Analysis` : "Unlock Deep Analysis"}
         </h2>
         <p style={{ color: WARM.tan }} className="text-sm text-center mb-6 leading-relaxed">
-          You've used your 2 free deep analyses. Subscribe to get unlimited access.
+          {concernContext
+            ? `Get a full personalized analysis focused on ${concernContext.toLowerCase()} with a Premium subscription.`
+            : "You've used your 2 free deep analyses. Subscribe to get unlimited access."}
         </p>
 
-        {/* Feature list */}
         <div style={{ backgroundColor: WARM.softWhite, borderColor: WARM.beige }}
           className="rounded-2xl border p-4 mb-6 space-y-2">
           {[
             "Unlimited deep skin analyses",
+            "Concern-focused targeted reports",
             "Full nutrition & diet recommendations",
             "Personalized skincare routines",
-            "Progress tracking over time",
           ].map((feat, i) => (
             <div key={i} className="flex items-center gap-2">
               <span style={{ color: WARM.sage }} className="text-sm">✓</span>
@@ -196,13 +193,11 @@ function PaywallModal({ onSubscribe, onClose, loading }) {
           ))}
         </div>
 
-        {/* Price */}
         <div className="text-center mb-6">
           <span style={{ color: WARM.darkBrown }} className="text-3xl font-bold">$4.99</span>
           <span style={{ color: WARM.tan }} className="text-sm"> / month</span>
         </div>
 
-        {/* CTA */}
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
@@ -227,7 +222,7 @@ function PaywallModal({ onSubscribe, onClose, loading }) {
   );
 }
 
-// Analysis empty state illustration
+// Analysis empty state
 function AnalysisEmptyState({ onGoToCapture }) {
   return (
     <motion.div
@@ -314,13 +309,15 @@ function App({ session }) {
   const [history, setHistory] = useState([]);
   const [view, setView] = useState("home");
   const [selectedReport, setSelectedReport] = useState(null);
-  const [deepAnalysis, setDeepAnalysis] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
   const [savedDeepAnalysis, setSavedDeepAnalysis] = useState(null);
   const [trialsRemaining, setTrialsRemaining] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallConcern, setPaywallConcern] = useState(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [activeConcern, setActiveConcern] = useState(null);
+  const [activeAnalysisTitle, setActiveAnalysisTitle] = useState(null);
 
   // Profile state
   const [displayName, setDisplayName] = useState("");
@@ -366,7 +363,6 @@ function App({ session }) {
   useEffect(() => {
     fetchHistory();
     fetchProfile();
-    // Check for payment success/cancel in URL
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
       fetchProfile();
@@ -387,6 +383,18 @@ function App({ session }) {
     setEditingName(false);
   };
 
+  // Handle skin concern card click
+  const handleConcernClick = (concern) => {
+    if (!isSubscribed) {
+      setPaywallConcern(concern.label);
+      setShowPaywall(true);
+      return;
+    }
+    // Subscribed — go to scan with concern pre-selected
+    setActiveConcern(concern.label);
+    setView("scan");
+  };
+
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
@@ -404,7 +412,7 @@ function App({ session }) {
     setCameraOn(false);
     setResult(null);
     setScores(null);
-    setDeepAnalysis(null);
+    setActiveConcern(null);
   };
 
   const captureFrame = () => {
@@ -418,14 +426,14 @@ function App({ session }) {
 
   const captureAndAnalyze = async () => {
     if (!videoRef.current || !cameraOn) return;
-    setError(null); setResult(null); setScores(null); setDeepAnalysis(null); setAnalyzing(true);
+    setError(null); setResult(null); setScores(null); setAnalyzing(true);
     const base64Image = captureFrame();
     try {
       const token = await getToken();
       const response = await fetch(`${BACKEND}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ image: base64Image }),
+        body: JSON.stringify({ image: base64Image, concern: activeConcern }),
       });
       const data = await response.json();
       setResult(data.analysis);
@@ -441,18 +449,17 @@ function App({ session }) {
   const runDeepAnalysis = async () => {
     if (!videoRef.current || !cameraOn) return;
     setDeepLoading(true);
-    setDeepAnalysis(null);
     const base64Image = captureFrame();
     try {
       const token = await getToken();
       const response = await fetch(`${BACKEND}/analyze/deep`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ image: base64Image }),
+        body: JSON.stringify({ image: base64Image, concern: activeConcern }),
       });
 
-      // Handle paywall
       if (response.status === 402) {
+        setPaywallConcern(null);
         setShowPaywall(true);
         setDeepLoading(false);
         return;
@@ -460,6 +467,7 @@ function App({ session }) {
 
       const data = await response.json();
       setSavedDeepAnalysis(data.deep_analysis);
+      setActiveAnalysisTitle(activeConcern ? `${activeConcern} Focus` : null);
       setTrialsRemaining(data.trials_remaining);
       setIsSubscribed(data.is_subscribed);
       setView("analysis");
@@ -528,13 +536,20 @@ function App({ session }) {
   };
 
   const deepSections = savedDeepAnalysis ? [
-    { key: "skin_assessment", title: "Skin Assessment", icon: "🔬", summaryKey: "summary", detailKey: "detail", extra: savedDeepAnalysis.skin_assessment?.fitzpatrick },
-    { key: "nutrition", title: "Nutrition & Diet", icon: "🥗", summaryKey: "summary", detailKey: "detail" },
-    { key: "skincare", title: "Skincare Routine", icon: "✨", summaryKey: "summary", detailKey: "detail" },
-    { key: "lifestyle", title: "Lifestyle Factors", icon: "🌿", summaryKey: "summary", detailKey: "detail" },
-    { key: "progress", title: "Weekly Progress", icon: "📈", summaryKey: "summary", detailKey: "detail" },
-    { key: "action_plan", title: "Priority Action Plan", icon: "🎯", summaryKey: "summary", detailKey: "detail" },
+    { key: "skin_assessment", title: "Skin Assessment" },
+    { key: "nutrition", title: "Nutrition & Diet" },
+    { key: "skincare", title: "Skincare Routine" },
+    { key: "lifestyle", title: "Lifestyle Factors" },
+    { key: "progress", title: "Weekly Progress" },
+    { key: "action_plan", title: "Priority Action Plan" },
   ] : [];
+
+  const skinConcerns = [
+    { label: "Oiliness", desc: "T-zone control" },
+    { label: "Acne", desc: "Breakout care" },
+    { label: "Glow", desc: "Radiance boost" },
+    { label: "Protection", desc: "SPF & defense" },
+  ];
 
   return (
     <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen pb-24">
@@ -544,8 +559,9 @@ function App({ session }) {
         {showPaywall && (
           <PaywallModal
             onSubscribe={handleSubscribe}
-            onClose={() => setShowPaywall(false)}
+            onClose={() => { setShowPaywall(false); setPaywallConcern(null); }}
             loading={checkoutLoading}
+            concernContext={paywallConcern}
           />
         )}
       </AnimatePresence>
@@ -596,7 +612,7 @@ function App({ session }) {
                 transition={{ duration: 0.2 }}
                 style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full max-w-md rounded-3xl border p-6 flex items-center justify-between shadow-sm cursor-pointer"
-                onClick={() => setView("scan")}
+                onClick={() => { setActiveConcern(null); setView("scan"); }}
               >
                 <div className="flex items-center gap-4">
                   <div style={{ backgroundColor: WARM.beige }} className="w-12 h-12 rounded-2xl flex items-center justify-center">
@@ -635,7 +651,7 @@ function App({ session }) {
                   {trialsRemaining === 0 && (
                     <motion.button
                       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowPaywall(true)}
+                      onClick={() => { setPaywallConcern(null); setShowPaywall(true); }}
                       style={{ backgroundColor: WARM.tan }}
                       className="px-4 py-2 rounded-full text-white text-xs font-semibold shadow-sm"
                     >
@@ -685,23 +701,36 @@ function App({ session }) {
                 </motion.div>
               )}
 
+              {/* Skin concern cards */}
               <div className="w-full max-w-md">
-                <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">Explore by Skin Concern</p>
+                <div className="flex items-center justify-between mb-4">
+                  <p style={{ color: WARM.darkBrown }} className="font-bold text-lg">Explore by Skin Concern</p>
+                  {!isSubscribed && (
+                    <span style={{ backgroundColor: WARM.tan }} className="text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                      Premium
+                    </span>
+                  )}
+                </div>
                 <motion.div variants={stagger} initial="initial" animate="animate" className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Oiliness", desc: "T-zone control" },
-                    { label: "Acne", desc: "Breakout care" },
-                    { label: "Glow", desc: "Radiance boost" },
-                    { label: "Protection", desc: "SPF & defense" },
-                  ].map((concern) => (
+                  {skinConcerns.map((concern) => (
                     <motion.div
-                      key={concern.label} variants={item}
+                      key={concern.label}
+                      variants={item}
                       whileHover={{ scale: 1.03, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
                       whileTap={{ scale: 0.97 }}
-                      style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
-                      className="rounded-2xl border p-4 cursor-pointer transition-all"
-                      onClick={() => setView("scan")}
+                      style={{
+                        backgroundColor: WARM.cream,
+                        borderColor: isSubscribed ? WARM.beige : WARM.beige,
+                        opacity: 1,
+                      }}
+                      className="rounded-2xl border p-4 cursor-pointer transition-all relative overflow-hidden"
+                      onClick={() => handleConcernClick(concern)}
                     >
+                      {!isSubscribed && (
+                        <div className="absolute top-2 right-2">
+                          <span style={{ color: WARM.tan }} className="text-xs">🔒</span>
+                        </div>
+                      )}
                       <p style={{ color: WARM.darkBrown }} className="font-semibold text-sm mt-2">{concern.label}</p>
                       <p style={{ color: WARM.tan }} className="text-xs">{concern.desc}</p>
                     </motion.div>
@@ -715,11 +744,38 @@ function App({ session }) {
           {view === "scan" && (
             <motion.div key="scan" {...fadeUp} className="flex flex-col items-center gap-6">
               <div className="text-center">
-                <h2 style={{ color: WARM.darkBrown }} className="text-2xl font-bold">Skin Scan</h2>
-                <p style={{ color: WARM.tan }} className="text-sm mt-1">Position your face in good lighting</p>
+                <h2 style={{ color: WARM.darkBrown }} className="text-2xl font-bold">
+                  {activeConcern ? `${activeConcern} Scan` : "Skin Scan"}
+                </h2>
+                <p style={{ color: WARM.tan }} className="text-sm mt-1">
+                  {activeConcern
+                    ? `Analysis will focus on ${activeConcern.toLowerCase()}`
+                    : "Position your face in good lighting"}
+                </p>
               </div>
 
-              {/* Trials badge on scan page */}
+              {/* Active concern badge */}
+              {activeConcern && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  style={{ backgroundColor: WARM.cream, borderColor: WARM.tan }}
+                  className="w-full max-w-lg rounded-2xl border px-4 py-2.5 flex items-center justify-between"
+                >
+                  <p style={{ color: WARM.darkBrown }} className="text-xs font-medium">
+                    Focus: <span style={{ color: WARM.tan }} className="font-bold">{activeConcern}</span>
+                  </p>
+                  <button
+                    onClick={() => setActiveConcern(null)}
+                    style={{ color: WARM.brown }}
+                    className="text-xs"
+                  >
+                    Clear ✕
+                  </button>
+                </motion.div>
+              )}
+
+              {/* Trials badge */}
               {!isSubscribed && trialsRemaining !== null && (
                 <div style={{ backgroundColor: trialsRemaining === 0 ? "#FEF3C7" : WARM.cream, borderColor: trialsRemaining === 0 ? "#F59E0B" : WARM.beige }}
                   className="w-full max-w-lg rounded-2xl border px-4 py-2.5 flex items-center justify-between">
@@ -729,7 +785,7 @@ function App({ session }) {
                       : `${trialsRemaining} free deep ${trialsRemaining === 1 ? "analysis" : "analyses"} remaining`}
                   </p>
                   {trialsRemaining === 0 && (
-                    <button onClick={() => setShowPaywall(true)} style={{ color: WARM.tan }} className="text-xs font-semibold ml-2">
+                    <button onClick={() => { setPaywallConcern(null); setShowPaywall(true); }} style={{ color: WARM.tan }} className="text-xs font-semibold ml-2">
                       Upgrade →
                     </button>
                   )}
@@ -841,7 +897,9 @@ function App({ session }) {
                     transition={{ duration: 0.4, delay: 0.1 }}
                     style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                     className="w-full max-w-lg rounded-3xl border p-6 shadow-md">
-                    <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">Analysis Report</p>
+                    <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-4">
+                      {activeConcern ? `${activeConcern} Analysis` : "Analysis Report"}
+                    </p>
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{result}</ReactMarkdown>
                   </motion.div>
                 )}
@@ -849,12 +907,14 @@ function App({ session }) {
             </motion.div>
           )}
 
-          {/* ANALYSIS VIEW — Deep analysis dedicated page */}
+          {/* ANALYSIS VIEW */}
           {view === "analysis" && (
             <motion.div key="analysis" {...fadeUp} className="flex flex-col items-center gap-6">
               <div className="text-center w-full max-w-lg">
                 <h2 style={{ color: WARM.darkBrown }} className="text-2xl font-bold">Analysis Report</h2>
-                <p style={{ color: WARM.tan }} className="text-sm mt-1">Your deep skin analysis results</p>
+                <p style={{ color: WARM.tan }} className="text-sm mt-1">
+                  {activeAnalysisTitle ? `Focused on: ${activeAnalysisTitle}` : "Your deep skin analysis results"}
+                </p>
               </div>
 
               {savedDeepAnalysis ? (
@@ -862,7 +922,6 @@ function App({ session }) {
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
                   className="w-full max-w-lg"
                 >
-                  {/* Premium header */}
                   <div style={{ backgroundColor: WARM.cream, borderColor: WARM.tan }}
                     className="rounded-3xl border-2 p-5 mb-4 shadow-md">
                     <div className="flex items-center gap-2 mb-1">
@@ -882,7 +941,6 @@ function App({ session }) {
                     <p style={{ color: WARM.darkBrown }} className="font-bold text-base">Deep Analysis Report</p>
                   </div>
 
-                  {/* Expandable sections */}
                   <motion.div variants={stagger} initial="initial" animate="animate">
                     {deepSections.map((sec) => {
                       const sectionData = savedDeepAnalysis[sec.key];
@@ -891,15 +949,13 @@ function App({ session }) {
                         <AnalysisSection
                           key={sec.key}
                           title={sec.title}
-                          icon={sec.icon}
-                          summaryItems={sectionData[sec.summaryKey] || []}
-                          detailItems={sectionData[sec.detailKey] || []}
+                          summaryItems={sectionData.summary || []}
+                          detailItems={sectionData.detail || []}
                         />
                       );
                     })}
                   </motion.div>
 
-                  {/* Disclaimer */}
                   {savedDeepAnalysis.disclaimer && (
                     <p style={{ color: WARM.beige }} className="text-xs text-center mt-4 px-4">
                       {savedDeepAnalysis.disclaimer}
@@ -1022,7 +1078,6 @@ function App({ session }) {
                 style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full rounded-3xl border overflow-hidden shadow-sm">
 
-                {/* Display name */}
                 <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
                   <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Display Name</p>
                   {editingName ? (
@@ -1048,13 +1103,11 @@ function App({ session }) {
                   )}
                 </motion.div>
 
-                {/* Email */}
                 <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
                   <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Email</p>
                   <p style={{ color: WARM.darkBrown }} className="text-sm">{userEmail}</p>
                 </motion.div>
 
-                {/* Subscription status */}
                 <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
                   <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Plan</p>
                   <div className="flex items-center justify-between">
@@ -1063,7 +1116,7 @@ function App({ session }) {
                     </p>
                     {!isSubscribed && (
                       <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowPaywall(true)}
+                        onClick={() => { setPaywallConcern(null); setShowPaywall(true); }}
                         style={{ backgroundColor: WARM.tan }}
                         className="text-xs font-semibold px-3 py-1 rounded-full text-white">
                         Upgrade
@@ -1072,13 +1125,11 @@ function App({ session }) {
                   </div>
                 </motion.div>
 
-                {/* Total scans */}
                 <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
                   <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Total Scans</p>
                   <p style={{ color: WARM.darkBrown }} className="text-sm font-bold">{history.length}</p>
                 </motion.div>
 
-                {/* Notifications */}
                 <motion.div variants={item} className="px-6 py-4 flex items-center justify-between">
                   <div>
                     <p style={{ color: WARM.tan }} className="text-xs font-medium uppercase tracking-wide">Notifications</p>
@@ -1095,7 +1146,6 @@ function App({ session }) {
                 </motion.div>
               </motion.div>
 
-              {/* Sign out */}
               <motion.button variants={item}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 onClick={async () => { await supabase.auth.signOut(); }}
