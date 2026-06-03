@@ -433,7 +433,7 @@ function App({ session }) {
       const response = await fetch(`${BACKEND}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ image: base64Image, concern: activeConcern }),
+        `${trialsRemaining ?? 2} free deep ${trialsRemaining === 1 ? "analysis" : "body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),analyses"} remaining`
       });
       const data = await response.json();
       setResult(data.analysis);
@@ -455,7 +455,7 @@ function App({ session }) {
       const response = await fetch(`${BACKEND}/analyze/deep`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ image: base64Image, concern: activeConcern }),
+        body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),
       });
 
       if (response.status === 402) {
@@ -633,7 +633,7 @@ function App({ session }) {
               </motion.div>
 
               {/* Trials remaining badge */}
-              {!isSubscribed && trialsRemaining !== null && (
+              {!isSubscribed && trialsRemaining !== null && trialsRemaining !== undefined && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -642,7 +642,7 @@ function App({ session }) {
                 >
                   <div>
                     <p style={{ color: WARM.darkBrown }} className="text-sm font-semibold">
-                      {trialsRemaining === 0 ? "Free trials used" : `${trialsRemaining} free deep ${trialsRemaining === 1 ? "analysis" : "analyses"} remaining`}
+                      {trialsRemaining === 0 ? "Free trials used" : `${trialsRemaining ?? 2} free deep ${trialsRemaining === 1 ? "analysis" : "analyses"} remaining`}
                     </p>
                     <p style={{ color: WARM.tan }} className="text-xs mt-0.5">
                       {trialsRemaining === 0 ? "Subscribe for unlimited deep analysis" : "Deep Analysis ✦ is free to try"}
