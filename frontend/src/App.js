@@ -60,7 +60,6 @@ function ScoreRing({ value, label, color }) {
   );
 }
 
-// Bottom Nav Icon components
 function HomeIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? WARM.tan : "none"}
@@ -104,6 +103,119 @@ function HistoryIcon({ active }) {
   );
 }
 
+// Empty state illustration for Analysis tab
+function AnalysisEmptyState({ onGoToCapture }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full max-w-lg flex flex-col items-center justify-center gap-6 py-12"
+    >
+      {/* Illustration */}
+      <motion.div className="relative">
+        {/* Outer glow ring */}
+        <motion.div
+          animate={{ scale: [1, 1.08, 1], opacity: [0.3, 0.6, 0.3] }}
+          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+          style={{ backgroundColor: WARM.beige }}
+          className="absolute inset-0 rounded-full blur-xl"
+        />
+        {/* Main circle */}
+        <motion.div
+          style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+          className="relative w-40 h-40 rounded-full border-2 flex items-center justify-center shadow-sm"
+        >
+          {/* Face SVG illustration */}
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            {/* Face outline */}
+            <ellipse cx="36" cy="38" rx="24" ry="26" fill={WARM.beige} stroke={WARM.tan} strokeWidth="1.5"/>
+            {/* Eyes */}
+            <ellipse cx="27" cy="33" rx="3" ry="3.5" fill={WARM.brown}/>
+            <ellipse cx="45" cy="33" rx="3" ry="3.5" fill={WARM.brown}/>
+            {/* Eye shine */}
+            <circle cx="28.2" cy="31.8" r="1" fill="white"/>
+            <circle cx="46.2" cy="31.8" r="1" fill="white"/>
+            {/* Smile */}
+            <path d="M27 44 Q36 51 45 44" stroke={WARM.brown} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+            {/* Scan lines overlay */}
+            <motion.g
+              animate={{ opacity: [0, 0.6, 0] }}
+              transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+            >
+              <line x1="14" y1="28" x2="58" y2="28" stroke={WARM.tan} strokeWidth="0.8" strokeDasharray="3 3"/>
+              <line x1="14" y1="36" x2="58" y2="36" stroke={WARM.tan} strokeWidth="0.8" strokeDasharray="3 3"/>
+              <line x1="14" y1="44" x2="58" y2="44" stroke={WARM.tan} strokeWidth="0.8" strokeDasharray="3 3"/>
+            </motion.g>
+            {/* Scan corner brackets */}
+            <path d="M14 20 L14 14 L20 14" stroke={WARM.tan} strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <path d="M58 20 L58 14 L52 14" stroke={WARM.tan} strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <path d="M14 56 L14 62 L20 62" stroke={WARM.tan} strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <path d="M58 56 L58 62 L52 62" stroke={WARM.tan} strokeWidth="2" strokeLinecap="round" fill="none"/>
+            {/* Sparkles */}
+            <motion.g
+              animate={{ opacity: [0, 1, 0], scale: [0.8, 1.2, 0.8] }}
+              transition={{ repeat: Infinity, duration: 2, delay: 0.5 }}
+              style={{ transformOrigin: "8px 10px" }}
+            >
+              <text x="4" y="14" fontSize="10" fill={WARM.tan}>✦</text>
+            </motion.g>
+            <motion.g
+              animate={{ opacity: [0, 1, 0], scale: [0.8, 1.2, 0.8] }}
+              transition={{ repeat: Infinity, duration: 2, delay: 1.2 }}
+              style={{ transformOrigin: "62px 10px" }}
+            >
+              <text x="58" y="14" fontSize="8" fill={WARM.beige}>✦</text>
+            </motion.g>
+          </svg>
+        </motion.div>
+
+        {/* Floating metric badges */}
+        <motion.div
+          animate={{ y: [0, -4, 0] }}
+          transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+          style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+          className="absolute -right-6 top-6 border rounded-xl px-2.5 py-1.5 shadow-sm"
+        >
+          <p style={{ color: WARM.tan }} className="text-xs font-bold">---%</p>
+          <p style={{ color: WARM.brown }} className="text-xs" style={{ fontSize: 9 }}>Clarity</p>
+        </motion.div>
+
+        <motion.div
+          animate={{ y: [0, -4, 0] }}
+          transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut", delay: 0.6 }}
+          style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+          className="absolute -left-6 bottom-8 border rounded-xl px-2.5 py-1.5 shadow-sm"
+        >
+          <p style={{ color: WARM.sage }} className="text-xs font-bold">---%</p>
+          <p style={{ color: WARM.brown }} className="text-xs" style={{ fontSize: 9 }}>Moisture</p>
+        </motion.div>
+      </motion.div>
+
+      {/* Text */}
+      <div className="text-center px-4">
+        <p style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-2">
+          No Analysis Yet
+        </p>
+        <p style={{ color: WARM.tan }} className="text-sm leading-relaxed max-w-xs mx-auto">
+          Run a Deep Analysis from the Capture tab to unlock your full personalized skin report.
+        </p>
+      </div>
+
+      {/* CTA */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onGoToCapture}
+        style={{ backgroundColor: WARM.tan }}
+        className="px-8 py-3 rounded-full text-white font-semibold text-sm shadow-md"
+      >
+        Start Deep Analysis
+      </motion.button>
+    </motion.div>
+  );
+}
+
 function App({ session }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -119,7 +231,15 @@ function App({ session }) {
   const [deepLoading, setDeepLoading] = useState(false);
   const [savedDeepAnalysis, setSavedDeepAnalysis] = useState(null);
 
+  // Profile state
+  const [displayName, setDisplayName] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [tempName, setTempName] = useState("");
+  const [notifications, setNotifications] = useState(true);
+
   const BACKEND = "https://skin-ai-production-d736.up.railway.app";
+
+  const userEmail = session?.user?.email || "";
 
   const getToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -140,6 +260,20 @@ function App({ session }) {
   };
 
   useEffect(() => { fetchHistory(); }, []);
+
+  // Load saved display name from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`skinai_name_${userEmail}`);
+    if (saved) setDisplayName(saved);
+  }, [userEmail]);
+
+  const saveName = () => {
+    if (tempName.trim()) {
+      setDisplayName(tempName.trim());
+      localStorage.setItem(`skinai_name_${userEmail}`, tempName.trim());
+    }
+    setEditingName(false);
+  };
 
   const startCamera = async () => {
     try {
@@ -222,7 +356,6 @@ function App({ session }) {
       const data = await response.json();
       setDeepAnalysis(data.deep_analysis);
       setSavedDeepAnalysis(data.deep_analysis);
-      // Auto-navigate to analysis view after deep analysis completes
       setView("analysis");
     } catch (err) {
       setError("Failed to run deep analysis.");
@@ -268,10 +401,17 @@ function App({ session }) {
     { id: "history", label: "History", icon: HistoryIcon },
   ];
 
+  // Avatar initials
+  const getInitials = () => {
+    if (displayName) return displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    if (userEmail) return userEmail[0].toUpperCase();
+    return "U";
+  };
+
   return (
     <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen pb-24">
 
-      {/* Top Header — Logo + Logout only */}
+      {/* Top Header */}
       <motion.header
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -286,20 +426,17 @@ function App({ session }) {
           <p style={{ color: WARM.tan }} className="text-xs">Your Personal Skin Advisor</p>
         </motion.div>
 
-        {/* Logout — top right, minimal */}
+        {/* Profile avatar button — top right */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={async () => { await supabase.auth.signOut(); }}
-          style={{ color: WARM.brown, borderColor: WARM.beige }}
-          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 hover:border-red-300 hover:text-red-400"
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.93 }}
+          onClick={() => setView("profile")}
+          style={{ backgroundColor: view === "profile" ? WARM.tan : WARM.beige }}
+          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm transition-colors duration-200"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          Logout
+          <span style={{ color: view === "profile" ? "#fff" : WARM.darkBrown }}>
+            {getInitials()}
+          </span>
         </motion.button>
       </motion.header>
 
@@ -578,7 +715,7 @@ function App({ session }) {
             </motion.div>
           )}
 
-          {/* ANALYSIS VIEW — Deep Analysis dedicated page */}
+          {/* ANALYSIS VIEW */}
           {view === "analysis" && (
             <motion.div key="analysis" {...fadeUp} className="flex flex-col items-center gap-6">
               <div className="text-center w-full max-w-lg">
@@ -640,34 +777,7 @@ function App({ session }) {
                   </motion.div>
                 </motion.div>
               ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{ backgroundColor: WARM.cream, borderColor: WARM.beige, color: WARM.tan }}
-                  className="w-full max-w-lg rounded-3xl border p-12 flex flex-col items-center justify-center gap-4 text-center"
-                >
-                  <motion.div
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ repeat: Infinity, duration: 3 }}
-                    style={{ backgroundColor: WARM.beige }}
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
-                  >
-                    ✦
-                  </motion.div>
-                  <p style={{ color: WARM.darkBrown }} className="font-semibold">No analysis yet</p>
-                  <p style={{ color: WARM.tan }} className="text-sm">
-                    Run a Deep Analysis from the Capture tab to see your full report here.
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setView("scan")}
-                    style={{ backgroundColor: WARM.tan }}
-                    className="mt-2 px-6 py-2.5 rounded-full text-white font-semibold text-sm shadow-md"
-                  >
-                    Go to Capture
-                  </motion.button>
-                </motion.div>
+                <AnalysisEmptyState onGoToCapture={() => setView("scan")} />
               )}
             </motion.div>
           )}
@@ -774,6 +884,160 @@ function App({ session }) {
             </motion.div>
           )}
 
+          {/* PROFILE / SETTINGS VIEW */}
+          {view === "profile" && (
+            <motion.div key="profile" {...fadeUp} className="flex flex-col items-center gap-6 max-w-md mx-auto">
+
+              {/* Avatar */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.4, type: "spring" }}
+                className="flex flex-col items-center gap-3"
+              >
+                <div
+                  style={{ backgroundColor: WARM.tan }}
+                  className="w-20 h-20 rounded-full flex items-center justify-center shadow-md"
+                >
+                  <span className="text-white font-bold text-2xl">{getInitials()}</span>
+                </div>
+                {displayName ? (
+                  <p style={{ color: WARM.darkBrown }} className="font-bold text-lg">{displayName}</p>
+                ) : (
+                  <p style={{ color: WARM.tan }} className="text-sm">Set your name</p>
+                )}
+                <p style={{ color: WARM.brown }} className="text-xs">{userEmail}</p>
+              </motion.div>
+
+              {/* Settings card */}
+              <motion.div
+                variants={stagger}
+                initial="initial"
+                animate="animate"
+                style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+                className="w-full rounded-3xl border overflow-hidden shadow-sm"
+              >
+                {/* Display name row */}
+                <motion.div
+                  variants={item}
+                  style={{ borderBottomColor: WARM.beige }}
+                  className="border-b px-6 py-4"
+                >
+                  <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Display Name</p>
+                  {editingName ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        autoFocus
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
+                        placeholder="Enter your name"
+                        style={{
+                          backgroundColor: WARM.softWhite,
+                          borderColor: WARM.beige,
+                          color: WARM.darkBrown,
+                        }}
+                        className="flex-1 rounded-xl border px-3 py-2 text-sm outline-none focus:border-amber-400"
+                      />
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={saveName}
+                        style={{ backgroundColor: WARM.tan }}
+                        className="px-4 py-2 rounded-xl text-white text-sm font-medium"
+                      >
+                        Save
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setEditingName(false)}
+                        style={{ color: WARM.brown }}
+                        className="px-3 py-2 text-sm"
+                      >
+                        Cancel
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <p style={{ color: WARM.darkBrown }} className="text-sm font-medium">
+                        {displayName || "Not set"}
+                      </p>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => { setTempName(displayName); setEditingName(true); }}
+                        style={{ color: WARM.tan, borderColor: WARM.beige }}
+                        className="text-xs font-medium border px-3 py-1 rounded-full"
+                      >
+                        Edit
+                      </motion.button>
+                    </div>
+                  )}
+                </motion.div>
+
+                {/* Email row */}
+                <motion.div
+                  variants={item}
+                  style={{ borderBottomColor: WARM.beige }}
+                  className="border-b px-6 py-4"
+                >
+                  <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Email</p>
+                  <p style={{ color: WARM.darkBrown }} className="text-sm">{userEmail}</p>
+                </motion.div>
+
+                {/* Total scans row */}
+                <motion.div
+                  variants={item}
+                  style={{ borderBottomColor: WARM.beige }}
+                  className="border-b px-6 py-4"
+                >
+                  <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Total Scans</p>
+                  <p style={{ color: WARM.darkBrown }} className="text-sm font-bold">{history.length}</p>
+                </motion.div>
+
+                {/* Notifications toggle */}
+                <motion.div
+                  variants={item}
+                  className="px-6 py-4 flex items-center justify-between"
+                >
+                  <div>
+                    <p style={{ color: WARM.tan }} className="text-xs font-medium uppercase tracking-wide">Notifications</p>
+                    <p style={{ color: WARM.brown }} className="text-xs mt-0.5">Skin tips and reminders</p>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setNotifications(!notifications)}
+                    style={{ backgroundColor: notifications ? WARM.tan : WARM.beige }}
+                    className="relative w-11 h-6 rounded-full transition-colors duration-200"
+                  >
+                    <motion.div
+                      animate={{ x: notifications ? 20 : 2 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                    />
+                  </motion.button>
+                </motion.div>
+              </motion.div>
+
+              {/* Logout button */}
+              <motion.button
+                variants={item}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={async () => { await supabase.auth.signOut(); }}
+                style={{ borderColor: "#FCA5A5", color: "#EF4444" }}
+                className="w-full py-3.5 rounded-2xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:bg-red-50"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Sign Out
+              </motion.button>
+
+            </motion.div>
+          )}
+
         </AnimatePresence>
       </div>
 
@@ -783,7 +1047,7 @@ function App({ session }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
         style={{ backgroundColor: WARM.cream, borderTopColor: WARM.beige }}
-        className="fixed bottom-0 left-0 right-0 border-t z-50 px-2 py-2 safe-area-pb"
+        className="fixed bottom-0 left-0 right-0 border-t z-50 px-2 py-2"
       >
         <div className="max-w-md mx-auto flex items-center justify-around">
           {navItems.map(({ id, label, icon: Icon }) => {
