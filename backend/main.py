@@ -53,7 +53,6 @@ FRAMES_DIR = DATA_DIR / "saved_frames"
 FRAMES_DIR.mkdir(exist_ok=True)
 
 security = HTTPBearer()
-
 FREE_DEEP_ANALYSIS_LIMIT = 2
 
 
@@ -143,7 +142,6 @@ async def db_update(table: str, filters: dict, data: dict):
 async def get_user_profile(user_id: str):
     profiles = await db_select("profiles", {"id": user_id}, limit=1)
     if not profiles or len(profiles) == 0:
-        # Create profile if it doesn't exist
         await db_insert("profiles", {
             "id": user_id,
             "deep_analysis_count": 0,
@@ -153,21 +151,17 @@ async def get_user_profile(user_id: str):
     return profiles[0]
 
 
-# ── Routes ────────────────────────────────────────────────────
+# ── Models ────────────────────────────────────────────────────
 class ImagePayload(BaseModel):
     image: str
+    concern: str = None
 
 
-class CheckoutPayload(BaseModel):
-    email: str
-
-
-# ── Basic scan — UNCHANGED ────────────────────────────────────
+# ── Basic scan ────────────────────────────────────────────────
 @app.post("/analyze")
 async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     user_id = user["id"]
 
-    # Save frame
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     frame_filename = f"frame_{user_id}_{timestamp}.jpg"
     frame_path = FRAMES_DIR / frame_filename
@@ -175,7 +169,14 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     with open(frame_path, "wb") as f:
         f.write(image_bytes)
 
-    # Get analysis
+    concern_context = ""
+    if payload.concern:
+        concern_context = (
+            f"\n\nFOCUS AREA: The user is specifically concerned about {payload.concern.upper()}. "
+            f"Give extra attention to this concern throughout the report, "
+            f"especially in Key Issues and Recommendations sections."
+        )
+
     report_msg = claude.messages.create(
         model="claude-haiku-4-5",
         max_tokens=1024,
@@ -204,11 +205,11 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
                             "3. Key Issues (max 4 bullet points — type, location, severity)\n"
                             "4. Affected Zones (table: Forehead / Nose / Cheeks / Chin)\n"
                             "5. Severity Rating (Mild / Moderate / Severe with one sentence justification)\n"
-                            "6. Skin Breakdown (texture, pore size, oil level, hydration level — "
-                            "one line each)\n"
+                            "6. Skin Breakdown (texture, pore size, oil level, hydration level — one line each)\n"
                             "7. Top 3 Recommendations (specific to detected issues and skin tone)\n\n"
                             "Keep the report under 300 words. Be direct, specific, and clinically "
                             "structured. End with a one-line medical disclaimer."
+                            + concern_context
                         ),
                     },
                 ],
@@ -217,7 +218,6 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     )
     analysis_text = report_msg.content[0].text
 
-    # Get scores
     scores_msg = claude.messages.create(
         model="claude-haiku-4-5",
         max_tokens=256,
@@ -240,7 +240,6 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     except Exception:
         scores = {"skin_health": 70, "moisture": 65, "clarity": 70, "evenness": 65, "severity": 30}
 
-    # Save to Supabase
     created_at = datetime.now().isoformat()
     try:
         await db_insert("reports", {
@@ -261,6 +260,7 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     }
 
 
+# ── History ───────────────────────────────────────────────────
 @app.get("/history")
 async def get_history(user=Depends(get_current_user)):
     try:
@@ -280,12 +280,11 @@ async def delete_report(report_id: str, user=Depends(get_current_user)):
         return {"error": str(e)}
 
 
-# ── Deep Analysis — Stripe gated + structured JSON ────────────
+# ── Deep Analysis ─────────────────────────────────────────────
 @app.post("/analyze/deep")
 async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
     user_id = user["id"]
 
-    # Check subscription / free trial status
     profile = await get_user_profile(user_id)
     is_subscribed = profile.get("is_subscribed", False)
     deep_count = profile.get("deep_analysis_count", 0)
@@ -300,7 +299,6 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
             }
         )
 
-    # Get last scan for comparison
     previous_analysis = None
     try:
         history = await db_select("reports", {"user_id": user_id}, limit=2)
@@ -316,7 +314,14 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
             "In the progress section, note 1-2 key changes compared to the previous scan."
         )
 
-    # Run deep analysis — returns structured JSON
+    concern_context = ""
+    if payload.concern:
+        concern_context = (
+            f"\n\nFOCUS AREA: The user is specifically concerned about {payload.concern.upper()}. "
+            f"Weight all sections toward this concern. In skincare, nutrition, and action plan, "
+            f"prioritize recommendations that directly address {payload.concern}."
+        )
+
     deep_msg = claude.messages.create(
         model="claude-haiku-4-5",
         max_tokens=2048,
@@ -368,8 +373,9 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
                             '  "disclaimer": "One line medical disclaimer."\n'
                             "}\n\n"
                             "Each bullet point should be one concise sentence. "
-                            "Be specific to the detected skin tone and visible conditions. "
-                            f"{comparison_context}"
+                            "Be specific to the detected skin tone and visible conditions."
+                            + concern_context
+                            + comparison_context
                         ),
                     },
                 ],
@@ -377,17 +383,14 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
         ],
     )
 
-    # Parse structured JSON response
     raw = deep_msg.content[0].text.strip()
     try:
-        # Strip markdown fences if present
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
         deep_data = json.loads(raw)
     except Exception:
-        # Fallback if JSON parsing fails
         deep_data = {
             "skin_assessment": {
                 "fitzpatrick": "Analysis completed",
@@ -417,7 +420,6 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
             "disclaimer": "This analysis is AI-generated and not a substitute for professional medical advice."
         }
 
-    # Increment free trial count if not subscribed
     if not is_subscribed:
         try:
             await db_update("profiles", {"id": user_id}, {
@@ -446,7 +448,6 @@ async def create_checkout_session(user=Depends(get_current_user)):
         profile = await get_user_profile(user_id)
         stripe_customer_id = profile.get("stripe_customer_id")
 
-        # Create or reuse Stripe customer
         if not stripe_customer_id:
             customer = stripe.Customer.create(
                 email=user_email,
@@ -457,7 +458,6 @@ async def create_checkout_session(user=Depends(get_current_user)):
                 "stripe_customer_id": stripe_customer_id
             })
 
-        # Create checkout session
         session = stripe.checkout.Session.create(
             customer=stripe_customer_id,
             payment_method_types=["card"],
@@ -493,27 +493,32 @@ async def stripe_webhook(request: Request):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    # Handle subscription activated
     if event["type"] in ["customer.subscription.created", "customer.subscription.updated"]:
         subscription = event["data"]["object"]
         if subscription["status"] == "active":
             customer_id = subscription["customer"]
             try:
-                # Find user by stripe_customer_id
+                period_end = None
+                try:
+                    items_data = subscription.get("items", {}).get("data", [])
+                    if items_data:
+                        period_end = items_data[0].get("current_period_end")
+                    if not period_end:
+                        period_end = subscription.get("current_period_end")
+                except Exception:
+                    pass
+
                 profiles = await db_select("profiles", {"stripe_customer_id": customer_id}, limit=1)
                 if profiles and len(profiles) > 0:
                     user_id = profiles[0]["id"]
-                    await db_update("profiles", {"id": user_id}, {
-                        "is_subscribed": True,
-                        "subscription_end_date": datetime.fromtimestamp(
-                            subscription["current_period_end"]
-                        ).isoformat()
-                    })
+                    update_data = {"is_subscribed": True}
+                    if period_end:
+                        update_data["subscription_end_date"] = datetime.fromtimestamp(period_end).isoformat()
+                    await db_update("profiles", {"id": user_id}, update_data)
                     print(f"✅ Subscription activated for user {user_id}")
             except Exception as e:
                 print(f"❌ Webhook subscription update failed: {e}")
 
-    # Handle subscription cancelled
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
         customer_id = subscription["customer"]
@@ -532,12 +537,7 @@ async def stripe_webhook(request: Request):
     return {"received": True}
 
 
-# ── Status ────────────────────────────────────────────────────
-@app.get("/")
-def root():
-    return {"status": "SkinAI backend is running"}
-
-
+# ── Profile ───────────────────────────────────────────────────
 @app.get("/profile")
 async def get_profile(user=Depends(get_current_user)):
     profile = await get_user_profile(user["id"])
@@ -546,3 +546,9 @@ async def get_profile(user=Depends(get_current_user)):
         "deep_analysis_count": profile.get("deep_analysis_count", 0),
         "trials_remaining": max(0, FREE_DEEP_ANALYSIS_LIMIT - profile.get("deep_analysis_count", 0)),
     }
+
+
+# ── Status ────────────────────────────────────────────────────
+@app.get("/")
+def root():
+    return {"status": "SkinAI backend is running"}
