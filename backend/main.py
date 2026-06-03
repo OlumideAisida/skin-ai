@@ -230,21 +230,29 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     analysis_text = report_msg.content[0].text
 
     scores_msg = claude.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=256,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Based on this skin analysis report:\n\n{analysis_text}\n\n"
-                    "Return ONLY a valid JSON object with these exact keys and integer values 0-100:\n"
-                    '{"skin_health": <score>, "moisture": <score>, "clarity": <score>, '
-                    '"evenness": <score>, "severity": <score>}\n'
-                    "Return only the JSON. No explanation, no markdown."
-                ),
-            }
-        ],
-    )
+    model="claude-haiku-4-5",
+    max_tokens=256,
+    messages=[
+        {
+            "role": "user",
+            "content": (
+                f"Based on this skin analysis report:\n\n{analysis_text}\n\n"
+                "Return ONLY a valid JSON object with these exact keys and integer values 0-100.\n\n"
+                "SCORING RULES — be precise and differentiated, never default to 65-75:\n"
+                "- skin_health: overall skin condition. 85-100=excellent, 70-84=good, 50-69=moderate issues, 30-49=significant issues, 0-29=severe\n"
+                "- moisture: hydration level. 85+=well hydrated, 60-84=adequate, 40-59=slightly dry, 20-39=dry, 0-19=very dry\n"
+                "- clarity: absence of blemishes/hyperpigmentation/uneven tone. 85+=very clear, 60-84=minor issues, 40-59=moderate, 20-39=significant, 0-19=severe\n"
+                "- evenness: skin tone uniformity. 85+=very even, 60-84=minor variation, 40-59=moderate unevenness, 20-39=significant, 0-19=severe\n"
+                "- severity: severity of detected issues (higher=worse). 0-19=none, 20-39=mild, 40-59=moderate, 60-79=significant, 80-100=severe\n\n"
+                "Base scores STRICTLY on what the report says. If report says mild issues score 55-65. "
+                "If report says no issues score 80-90. Never give 70 as a default.\n\n"
+                '{"skin_health": <score>, "moisture": <score>, "clarity": <score>, '
+                '"evenness": <score>, "severity": <score>}\n'
+                "Return only the JSON. No explanation, no markdown."
+            ),
+        }
+    ],
+)
 
     try:
         scores = json.loads(scores_msg.content[0].text.strip())
