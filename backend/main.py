@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -7,6 +7,7 @@ import os
 import json
 import base64
 import httpx
+import stripe
 from datetime import datetime
 from pathlib import Path
 
@@ -41,11 +42,19 @@ claude = anthropic.Anthropic(api_key=api_key)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://skin-ai-two.vercel.app")
+
 DATA_DIR = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "."))
 FRAMES_DIR = DATA_DIR / "saved_frames"
 FRAMES_DIR.mkdir(exist_ok=True)
 
 security = HTTPBearer()
+
+FREE_DEEP_ANALYSIS_LIMIT = 2
 
 
 # ── Auth ──────────────────────────────────────────────────────
@@ -112,11 +121,48 @@ async def db_delete(table: str, filters: dict):
     return res.status_code
 
 
+async def db_update(table: str, filters: dict, data: dict):
+    params = {}
+    for key, value in filters.items():
+        params[key] = f"eq.{value}"
+    async with httpx.AsyncClient() as client:
+        res = await client.patch(
+            f"{SUPABASE_URL}/rest/v1/{table}",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+            },
+            params=params,
+            json=data,
+        )
+    return res.json()
+
+
+async def get_user_profile(user_id: str):
+    profiles = await db_select("profiles", {"id": user_id}, limit=1)
+    if not profiles or len(profiles) == 0:
+        # Create profile if it doesn't exist
+        await db_insert("profiles", {
+            "id": user_id,
+            "deep_analysis_count": 0,
+            "is_subscribed": False,
+        })
+        return {"id": user_id, "deep_analysis_count": 0, "is_subscribed": False}
+    return profiles[0]
+
+
 # ── Routes ────────────────────────────────────────────────────
 class ImagePayload(BaseModel):
     image: str
 
 
+class CheckoutPayload(BaseModel):
+    email: str
+
+
+# ── Basic scan — UNCHANGED ────────────────────────────────────
 @app.post("/analyze")
 async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     user_id = user["id"]
@@ -147,7 +193,7 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
                     },
                     {
                         "type": "text",
-                   "text": (
+                        "text": (
                             "You are a clinical skin analysis assistant. Analyze the facial skin "
                             "in this image across all Fitzpatrick skin tones (I-VI). "
                             "Be culturally competent — do not assume lighter skin.\n\n"
@@ -234,10 +280,25 @@ async def delete_report(report_id: str, user=Depends(get_current_user)):
         return {"error": str(e)}
 
 
-@app.get("/")
+# ── Deep Analysis — Stripe gated + structured JSON ────────────
 @app.post("/analyze/deep")
 async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
     user_id = user["id"]
+
+    # Check subscription / free trial status
+    profile = await get_user_profile(user_id)
+    is_subscribed = profile.get("is_subscribed", False)
+    deep_count = profile.get("deep_analysis_count", 0)
+
+    if not is_subscribed and deep_count >= FREE_DEEP_ANALYSIS_LIMIT:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "PAYWALL",
+                "message": "You have used your 2 free deep analyses. Subscribe for unlimited access.",
+                "deep_analysis_count": deep_count,
+            }
+        )
 
     # Get last scan for comparison
     previous_analysis = None
@@ -252,10 +313,10 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
     if previous_analysis:
         comparison_context = (
             f"\n\nPREVIOUS SCAN FOR COMPARISON:\n{previous_analysis}\n\n"
-            "Compare current findings to the previous scan and note any improvements "
-            "or changes in the Weekly Progress section."
+            "In the progress section, note 1-2 key changes compared to the previous scan."
         )
 
+    # Run deep analysis — returns structured JSON
     deep_msg = claude.messages.create(
         model="claude-haiku-4-5",
         max_tokens=2048,
@@ -274,51 +335,41 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
                     {
                         "type": "text",
                         "text": (
-                            "You are an advanced dermatology and wellness AI assistant. "
-                            "Perform a comprehensive skin and wellness analysis based on "
-                            "this facial image. Analyze across all Fitzpatrick skin tones "
-                            "(I-VI) with full cultural competence.\n\n"
-
-                            "Provide a DEEP ANALYSIS REPORT with these sections:\n\n"
-
-                            "## 1. Detailed Skin Assessment\n"
-                            "- Skin tone (Fitzpatrick type)\n"
-                            "- Texture analysis (rough, smooth, uneven)\n"
-                            "- Pore condition (enlarged, normal, congested)\n"
-                            "- Oil/hydration balance\n"
-                            "- Active issues with precise locations\n\n"
-
-                            "## 2. Nutritional & Diet Suggestions\n"
-                            "Based on visible skin conditions, suggest:\n"
-                            "- 3-4 specific nutrients to increase\n"
-                            "- Foods to add to diet\n"
-                            "- Foods to reduce or avoid\n"
-                            "- Hydration recommendations\n\n"
-
-                            "## 3. Skincare Product Recommendations\n"
-                            "- Specific ingredients to look for (e.g. niacinamide, salicylic acid)\n"
-                            "- Ingredients to avoid for this skin type\n"
-                            "- Morning routine steps\n"
-                            "- Evening routine steps\n\n"
-
-                            "## 4. Lifestyle Factors\n"
-                            "- Sleep recommendations for skin recovery\n"
-                            "- Stress management impact on detected issues\n"
-                            "- Exercise considerations\n"
-                            "- Environmental factors to address\n\n"
-
-                            "## 5. Weekly Progress Tracking\n"
-                            "- Current skin health summary\n"
-                            "- Key metrics to track this week\n"
-                            "- Expected improvements with recommended changes\n"
-                            f"{comparison_context}\n\n"
-
-                            "## 6. Priority Action Plan\n"
-                            "List the top 5 most impactful changes ranked by priority.\n\n"
-
-                            "Be specific, evidence-based, and culturally competent. "
-                            "Tailor all recommendations to the detected skin tone. "
-                            "End with a medical disclaimer."
+                            "You are an advanced dermatology AI assistant. Analyze this facial image "
+                            "across all Fitzpatrick skin tones (I-VI) with full cultural competence.\n\n"
+                            "Return ONLY a valid JSON object with this exact structure. "
+                            "No markdown, no explanation, just the JSON:\n\n"
+                            "{\n"
+                            '  "skin_assessment": {\n'
+                            '    "fitzpatrick": "Type X — one line description",\n'
+                            '    "summary": ["bullet 1", "bullet 2", "bullet 3"],\n'
+                            '    "detail": ["pore condition detail", "oil balance detail", "active issue with location"]\n'
+                            '  },\n'
+                            '  "nutrition": {\n'
+                            '    "summary": ["key nutrient to increase", "top food to add"],\n'
+                            '    "detail": ["nutrient 2", "nutrient 3", "food to reduce", "hydration tip"]\n'
+                            '  },\n'
+                            '  "skincare": {\n'
+                            '    "summary": ["morning step 1", "morning step 2"],\n'
+                            '    "detail": ["evening step 1", "evening step 2", "ingredient to look for", "ingredient to avoid"]\n'
+                            '  },\n'
+                            '  "lifestyle": {\n'
+                            '    "summary": ["most impactful lifestyle tip", "second tip"],\n'
+                            '    "detail": ["sleep recommendation", "stress management tip", "exercise consideration"]\n'
+                            '  },\n'
+                            '  "progress": {\n'
+                            '    "summary": ["current skin health summary in one sentence", "top metric to track this week"],\n'
+                            '    "detail": ["expected improvement 1", "expected improvement 2"]\n'
+                            '  },\n'
+                            '  "action_plan": {\n'
+                            '    "summary": ["priority action 1", "priority action 2", "priority action 3"],\n'
+                            '    "detail": ["priority action 4", "priority action 5"]\n'
+                            '  },\n'
+                            '  "disclaimer": "One line medical disclaimer."\n'
+                            "}\n\n"
+                            "Each bullet point should be one concise sentence. "
+                            "Be specific to the detected skin tone and visible conditions. "
+                            f"{comparison_context}"
                         ),
                     },
                 ],
@@ -326,11 +377,172 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
         ],
     )
 
-    deep_analysis = deep_msg.content[0].text
+    # Parse structured JSON response
+    raw = deep_msg.content[0].text.strip()
+    try:
+        # Strip markdown fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        deep_data = json.loads(raw)
+    except Exception:
+        # Fallback if JSON parsing fails
+        deep_data = {
+            "skin_assessment": {
+                "fitzpatrick": "Analysis completed",
+                "summary": ["Skin analysis performed", "Results processed", "See recommendations below"],
+                "detail": ["Detailed assessment available", "Consult a dermatologist for clinical diagnosis"]
+            },
+            "nutrition": {
+                "summary": ["Increase antioxidant-rich foods", "Stay well hydrated"],
+                "detail": ["Add leafy greens", "Reduce processed sugars", "Drink 8 glasses of water daily", "Consider omega-3 supplements"]
+            },
+            "skincare": {
+                "summary": ["Use a gentle cleanser morning and night", "Apply SPF 30+ daily"],
+                "detail": ["Use retinol or niacinamide in the evening", "Apply moisturizer while skin is damp", "Look for hyaluronic acid", "Avoid alcohol-based toners"]
+            },
+            "lifestyle": {
+                "summary": ["Aim for 7-9 hours of sleep for skin repair", "Manage stress levels to reduce cortisol"],
+                "detail": ["Exercise 3-4 times per week to boost circulation", "Avoid smoking and excessive alcohol", "Use a humidifier in dry environments"]
+            },
+            "progress": {
+                "summary": ["Skin health baseline recorded", "Track changes weekly"],
+                "detail": ["Monitor moisture levels", "Note any new breakouts or improvements"]
+            },
+            "action_plan": {
+                "summary": ["Start a consistent morning and evening routine", "Add SPF to your daily regimen", "Increase water intake to 8+ glasses daily"],
+                "detail": ["Book a dermatologist appointment if issues persist", "Take weekly photos to track progress"]
+            },
+            "disclaimer": "This analysis is AI-generated and not a substitute for professional medical advice."
+        }
+
+    # Increment free trial count if not subscribed
+    if not is_subscribed:
+        try:
+            await db_update("profiles", {"id": user_id}, {
+                "deep_analysis_count": deep_count + 1
+            })
+        except Exception as e:
+            print(f"❌ Failed to update deep_analysis_count: {e}")
+
+    trials_remaining = None if is_subscribed else max(0, FREE_DEEP_ANALYSIS_LIMIT - (deep_count + 1))
 
     return {
-        "deep_analysis": deep_analysis,
+        "deep_analysis": deep_data,
+        "is_subscribed": is_subscribed,
+        "trials_remaining": trials_remaining,
         "generated_at": datetime.now().isoformat(),
     }
+
+
+# ── Stripe Checkout ───────────────────────────────────────────
+@app.post("/create-checkout-session")
+async def create_checkout_session(user=Depends(get_current_user)):
+    user_id = user["id"]
+    user_email = user.get("email", "")
+
+    try:
+        profile = await get_user_profile(user_id)
+        stripe_customer_id = profile.get("stripe_customer_id")
+
+        # Create or reuse Stripe customer
+        if not stripe_customer_id:
+            customer = stripe.Customer.create(
+                email=user_email,
+                metadata={"supabase_user_id": user_id}
+            )
+            stripe_customer_id = customer.id
+            await db_update("profiles", {"id": user_id}, {
+                "stripe_customer_id": stripe_customer_id
+            })
+
+        # Create checkout session
+        session = stripe.checkout.Session.create(
+            customer=stripe_customer_id,
+            payment_method_types=["card"],
+            line_items=[{
+                "price": STRIPE_PRICE_ID,
+                "quantity": 1,
+            }],
+            mode="subscription",
+            success_url=f"{FRONTEND_URL}?payment=success",
+            cancel_url=f"{FRONTEND_URL}?payment=cancelled",
+            metadata={"supabase_user_id": user_id}
+        )
+
+        return {"checkout_url": session.url}
+
+    except Exception as e:
+        print(f"❌ Checkout error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Stripe Webhook ────────────────────────────────────────────
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Handle subscription activated
+    if event["type"] in ["customer.subscription.created", "customer.subscription.updated"]:
+        subscription = event["data"]["object"]
+        if subscription["status"] == "active":
+            customer_id = subscription["customer"]
+            try:
+                # Find user by stripe_customer_id
+                profiles = await db_select("profiles", {"stripe_customer_id": customer_id}, limit=1)
+                if profiles and len(profiles) > 0:
+                    user_id = profiles[0]["id"]
+                    await db_update("profiles", {"id": user_id}, {
+                        "is_subscribed": True,
+                        "subscription_end_date": datetime.fromtimestamp(
+                            subscription["current_period_end"]
+                        ).isoformat()
+                    })
+                    print(f"✅ Subscription activated for user {user_id}")
+            except Exception as e:
+                print(f"❌ Webhook subscription update failed: {e}")
+
+    # Handle subscription cancelled
+    elif event["type"] == "customer.subscription.deleted":
+        subscription = event["data"]["object"]
+        customer_id = subscription["customer"]
+        try:
+            profiles = await db_select("profiles", {"stripe_customer_id": customer_id}, limit=1)
+            if profiles and len(profiles) > 0:
+                user_id = profiles[0]["id"]
+                await db_update("profiles", {"id": user_id}, {
+                    "is_subscribed": False,
+                    "subscription_end_date": None
+                })
+                print(f"✅ Subscription cancelled for user {user_id}")
+        except Exception as e:
+            print(f"❌ Webhook cancellation failed: {e}")
+
+    return {"received": True}
+
+
+# ── Status ────────────────────────────────────────────────────
+@app.get("/")
 def root():
     return {"status": "SkinAI backend is running"}
+
+
+@app.get("/profile")
+async def get_profile(user=Depends(get_current_user)):
+    profile = await get_user_profile(user["id"])
+    return {
+        "is_subscribed": profile.get("is_subscribed", False),
+        "deep_analysis_count": profile.get("deep_analysis_count", 0),
+        "trials_remaining": max(0, FREE_DEEP_ANALYSIS_LIMIT - profile.get("deep_analysis_count", 0)),
+    }
