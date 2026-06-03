@@ -60,6 +60,50 @@ function ScoreRing({ value, label, color }) {
   );
 }
 
+// Bottom Nav Icon components
+function HomeIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? WARM.tan : "none"}
+      stroke={active ? WARM.tan : WARM.brown} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  );
+}
+
+function CaptureIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? WARM.tan : "none"}
+      stroke={active ? WARM.tan : WARM.brown} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  );
+}
+
+function AnalysisIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+      stroke={active ? WARM.tan : WARM.brown} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+  );
+}
+
+function HistoryIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+      stroke={active ? WARM.tan : WARM.brown} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+}
+
 function App({ session }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -73,6 +117,7 @@ function App({ session }) {
   const [selectedReport, setSelectedReport] = useState(null);
   const [deepAnalysis, setDeepAnalysis] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
+  const [savedDeepAnalysis, setSavedDeepAnalysis] = useState(null);
 
   const BACKEND = "https://skin-ai-production-d736.up.railway.app";
 
@@ -176,6 +221,9 @@ function App({ session }) {
       });
       const data = await response.json();
       setDeepAnalysis(data.deep_analysis);
+      setSavedDeepAnalysis(data.deep_analysis);
+      // Auto-navigate to analysis view after deep analysis completes
+      setView("analysis");
     } catch (err) {
       setError("Failed to run deep analysis.");
     } finally {
@@ -213,11 +261,18 @@ function App({ session }) {
     p: ({ node, ...props }) => <p style={{ color: "#6B4F1A" }} className="leading-relaxed mb-2 text-sm" {...props} />,
   };
 
-  return (
-    <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen">
+  const navItems = [
+    { id: "home", label: "Home", icon: HomeIcon },
+    { id: "scan", label: "Capture", icon: CaptureIcon },
+    { id: "analysis", label: "Analysis", icon: AnalysisIcon },
+    { id: "history", label: "History", icon: HistoryIcon },
+  ];
 
-      {/* Nav */}
-      <motion.nav
+  return (
+    <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen pb-24">
+
+      {/* Top Header — Logo + Logout only */}
+      <motion.header
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
@@ -230,35 +285,25 @@ function App({ session }) {
           </h1>
           <p style={{ color: WARM.tan }} className="text-xs">Your Personal Skin Advisor</p>
         </motion.div>
-        <div className="flex gap-2 items-center">
-          {["home", "scan", "history"].map((v) => (
-            <motion.button
-              key={v}
-              onClick={() => setView(v)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                backgroundColor: view === v ? WARM.tan : "transparent",
-                color: view === v ? "#fff" : WARM.brown,
-                borderColor: WARM.beige,
-              }}
-              className="px-4 py-2 rounded-full text-sm font-medium border capitalize transition-all duration-200"
-            >
-              {v === "home" ? "Home" : v === "scan" ? "Scan" : "History"}
-            </motion.button>
-          ))}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={async () => { await supabase.auth.signOut(); }}
-            style={{ color: WARM.brown, borderColor: WARM.beige }}
-            className="px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 hover:border-red-300 hover:text-red-400"
-          >
-            Logout
-          </motion.button>
-        </div>
-      </motion.nav>
 
+        {/* Logout — top right, minimal */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={async () => { await supabase.auth.signOut(); }}
+          style={{ color: WARM.brown, borderColor: WARM.beige }}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 hover:border-red-300 hover:text-red-400"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Logout
+        </motion.button>
+      </motion.header>
+
+      {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8 overflow-hidden">
         <AnimatePresence mode="wait">
 
@@ -359,7 +404,7 @@ function App({ session }) {
             </motion.div>
           )}
 
-          {/* SCAN VIEW */}
+          {/* SCAN / CAPTURE VIEW */}
           {view === "scan" && (
             <motion.div key="scan" {...fadeUp} className="flex flex-col items-center gap-6">
               <div className="text-center">
@@ -401,7 +446,6 @@ function App({ session }) {
                       className="absolute inset-0 flex flex-col items-center justify-center gap-4"
                       style={{ backgroundColor: "rgba(28,18,8,0.85)" }}
                     >
-                      {/* Scanning pulse rings */}
                       <div className="relative flex items-center justify-center">
                         <motion.div
                           animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
@@ -425,7 +469,7 @@ function App({ session }) {
                   )}
                 </div>
 
-                <div style={{ backgroundColor: WARM.cream }} className="px-5 py-4 flex justify-center gap-3">
+                <div style={{ backgroundColor: WARM.cream }} className="px-5 py-4 flex justify-center gap-3 flex-wrap">
                   {!cameraOn ? (
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -531,64 +575,100 @@ function App({ session }) {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </motion.div>
+          )}
 
-              <AnimatePresence>
-                {deepAnalysis && (
-                  <motion.div
-                    key="deep"
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4, delay: 0.15 }}
-                    style={{ backgroundColor: WARM.cream, borderColor: WARM.tan }}
-                    className="w-full max-w-lg rounded-3xl border-2 p-6 shadow-md"
-                  >
-                    <div className="flex items-center gap-2 mb-5">
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                        style={{ backgroundColor: WARM.tan }}
-                        className="px-3 py-1 rounded-full"
-                      >
-                        <span className="text-white text-xs font-bold tracking-wide">PREMIUM</span>
-                      </motion.div>
-                      <p style={{ color: WARM.darkBrown }} className="font-bold text-base">Deep Analysis Report</p>
-                    </div>
-                    <motion.div variants={stagger} initial="initial" animate="animate">
-                      {deepAnalysis.split("##").filter(s => s.trim()).map((section, i) => {
-                        const lines = section.trim().split("\n").filter(l => l.trim());
-                        const title = lines[0].replace(/^\d+\.\s*/, "").trim();
-                        const content = lines.slice(1);
-                        return (
-                          <motion.div
-                            key={i}
-                            variants={item}
-                            style={{ backgroundColor: WARM.softWhite, borderColor: WARM.beige }}
-                            className="rounded-2xl border p-4 mb-3"
-                          >
-                            <p style={{ color: WARM.brown }} className="font-semibold text-xs uppercase tracking-wider mb-2">
-                              {title}
-                            </p>
-                            <div>
-                              {content.map((line, j) => {
-                                const clean = line.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").trim();
-                                if (!clean) return null;
-                                return (
-                                  <div key={j} className="flex items-start gap-2 mb-1">
-                                    <span style={{ color: WARM.tan }} className="mt-0.5 text-xs">▸</span>
-                                    <p style={{ color: WARM.darkBrown }} className="text-xs leading-relaxed">{clean}</p>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </motion.div>
-                        );
-                      })}
+          {/* ANALYSIS VIEW — Deep Analysis dedicated page */}
+          {view === "analysis" && (
+            <motion.div key="analysis" {...fadeUp} className="flex flex-col items-center gap-6">
+              <div className="text-center w-full max-w-lg">
+                <h2 style={{ color: WARM.darkBrown }} className="text-2xl font-bold">Analysis Report</h2>
+                <p style={{ color: WARM.tan }} className="text-sm mt-1">Your deep skin analysis results</p>
+              </div>
+
+              {savedDeepAnalysis ? (
+                <motion.div
+                  key="deep-page"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  style={{ backgroundColor: WARM.cream, borderColor: WARM.tan }}
+                  className="w-full max-w-lg rounded-3xl border-2 p-6 shadow-md"
+                >
+                  <div className="flex items-center gap-2 mb-5">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                      style={{ backgroundColor: WARM.tan }}
+                      className="px-3 py-1 rounded-full"
+                    >
+                      <span className="text-white text-xs font-bold tracking-wide">PREMIUM</span>
                     </motion.div>
+                    <p style={{ color: WARM.darkBrown }} className="font-bold text-base">Deep Analysis Report</p>
+                  </div>
+                  <motion.div variants={stagger} initial="initial" animate="animate">
+                    {savedDeepAnalysis.split("##").filter(s => s.trim()).map((section, i) => {
+                      const lines = section.trim().split("\n").filter(l => l.trim());
+                      const title = lines[0].replace(/^\d+\.\s*/, "").trim();
+                      const content = lines.slice(1);
+                      return (
+                        <motion.div
+                          key={i}
+                          variants={item}
+                          style={{ backgroundColor: WARM.softWhite, borderColor: WARM.beige }}
+                          className="rounded-2xl border p-4 mb-3"
+                        >
+                          <p style={{ color: WARM.brown }} className="font-semibold text-xs uppercase tracking-wider mb-2">
+                            {title}
+                          </p>
+                          <div>
+                            {content.map((line, j) => {
+                              const clean = line.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").trim();
+                              if (!clean) return null;
+                              return (
+                                <div key={j} className="flex items-start gap-2 mb-1">
+                                  <span style={{ color: WARM.tan }} className="mt-0.5 text-xs">▸</span>
+                                  <p style={{ color: WARM.darkBrown }} className="text-xs leading-relaxed">{clean}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{ backgroundColor: WARM.cream, borderColor: WARM.beige, color: WARM.tan }}
+                  className="w-full max-w-lg rounded-3xl border p-12 flex flex-col items-center justify-center gap-4 text-center"
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ repeat: Infinity, duration: 3 }}
+                    style={{ backgroundColor: WARM.beige }}
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
+                  >
+                    ✦
+                  </motion.div>
+                  <p style={{ color: WARM.darkBrown }} className="font-semibold">No analysis yet</p>
+                  <p style={{ color: WARM.tan }} className="text-sm">
+                    Run a Deep Analysis from the Capture tab to see your full report here.
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setView("scan")}
+                    style={{ backgroundColor: WARM.tan }}
+                    className="mt-2 px-6 py-2.5 rounded-full text-white font-semibold text-sm shadow-md"
+                  >
+                    Go to Capture
+                  </motion.button>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
@@ -696,6 +776,48 @@ function App({ session }) {
 
         </AnimatePresence>
       </div>
+
+      {/* Bottom Navigation Bar */}
+      <motion.nav
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
+        style={{ backgroundColor: WARM.cream, borderTopColor: WARM.beige }}
+        className="fixed bottom-0 left-0 right-0 border-t z-50 px-2 py-2 safe-area-pb"
+      >
+        <div className="max-w-md mx-auto flex items-center justify-around">
+          {navItems.map(({ id, label, icon: Icon }) => {
+            const active = view === id;
+            return (
+              <motion.button
+                key={id}
+                onClick={() => setView(id)}
+                whileTap={{ scale: 0.9 }}
+                className="flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-200 relative"
+                style={{ minWidth: 64 }}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="nav-pill"
+                    style={{ backgroundColor: WARM.beige }}
+                    className="absolute inset-0 rounded-2xl"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">
+                  <Icon active={active} />
+                </span>
+                <span
+                  className="relative z-10 text-xs font-medium"
+                  style={{ color: active ? WARM.tan : WARM.brown }}
+                >
+                  {label}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.nav>
 
       <canvas ref={canvasRef} className="hidden" />
     </div>
