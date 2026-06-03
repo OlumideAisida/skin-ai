@@ -433,7 +433,7 @@ function App({ session }) {
       const response = await fetch(`${BACKEND}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        `${trialsRemaining ?? 2} free deep ${trialsRemaining === 1 ? "analysis" : "body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),analyses"} remaining`
+        body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),
       });
       const data = await response.json();
       setResult(data.analysis);
