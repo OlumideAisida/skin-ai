@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import anthropic
 import os
 import json
+import re
 import base64
 import httpx
 import stripe
@@ -16,6 +17,16 @@ try:
     load_dotenv()
 except ImportError:
     pass
+def strip_emojis(text: str) -> str:
+    emoji_pattern = re.compile(
+        "[\U0001F000-\U0001FFFF"
+        "\U00002600-\U000027BF"
+        "\U0001F300-\U0001F9FF"
+        "\U00002700-\U000027BF"
+        "\U000024C2-\U0001F251]+",
+        flags=re.UNICODE
+    )
+    return emoji_pattern.sub("", text).strip()
 
 app = FastAPI()
 
@@ -429,6 +440,18 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
             print(f"❌ Failed to update deep_analysis_count: {e}")
 
     trials_remaining = None if is_subscribed else max(0, FREE_DEEP_ANALYSIS_LIMIT - (deep_count + 1))
+
+    # Strip emojis from all string values in deep_data
+    def clean_deep_data(obj):
+        if isinstance(obj, str):
+            return strip_emojis(obj)
+        elif isinstance(obj, list):
+            return [clean_deep_data(i) for i in obj]
+        elif isinstance(obj, dict):
+            return {k: clean_deep_data(v) for k, v in obj.items()}
+        return obj
+
+    deep_data = clean_deep_data(deep_data)
 
     return {
         "deep_analysis": deep_data,
