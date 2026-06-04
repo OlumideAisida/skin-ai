@@ -87,7 +87,6 @@ function HistoryIcon({ active }) {
   );
 }
 
-// Expandable section — no emojis, bold italic title
 function AnalysisSection({ title, summaryItems, detailItems }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -141,7 +140,6 @@ function AnalysisSection({ title, summaryItems, detailItems }) {
   );
 }
 
-// Paywall modal
 function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
   return (
     <motion.div
@@ -168,7 +166,6 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
         >
           <span className="text-white font-bold text-xl">✦</span>
         </motion.div>
-
         <h2 style={{ color: WARM.darkBrown }} className="text-xl font-bold text-center mb-2">
           {concernContext ? `Unlock ${concernContext} Analysis` : "Unlock Deep Analysis"}
         </h2>
@@ -177,7 +174,6 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
             ? `Get a full personalized analysis focused on ${concernContext.toLowerCase()} with a Premium subscription.`
             : "You've used your 2 free deep analyses. Subscribe to get unlimited access."}
         </p>
-
         <div style={{ backgroundColor: WARM.softWhite, borderColor: WARM.beige }}
           className="rounded-2xl border p-4 mb-6 space-y-2">
           {[
@@ -192,26 +188,20 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
             </div>
           ))}
         </div>
-
         <div className="text-center mb-6">
           <span style={{ color: WARM.darkBrown }} className="text-3xl font-bold">$4.99</span>
           <span style={{ color: WARM.tan }} className="text-sm"> / month</span>
         </div>
-
         <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={onSubscribe}
-          disabled={loading}
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          onClick={onSubscribe} disabled={loading}
           style={{ backgroundColor: WARM.tan }}
           className="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md disabled:opacity-60"
         >
           {loading ? "Redirecting to checkout..." : "Subscribe — $4.99/month"}
         </motion.button>
-
         <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={onClose}
+          whileTap={{ scale: 0.95 }} onClick={onClose}
           style={{ color: WARM.brown }}
           className="w-full text-center text-xs mt-3 py-2"
         >
@@ -222,7 +212,6 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
   );
 }
 
-// Analysis empty state
 function AnalysisEmptyState({ onGoToCapture }) {
   return (
     <motion.div
@@ -286,8 +275,7 @@ function AnalysisEmptyState({ onGoToCapture }) {
         </p>
       </div>
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
         onClick={onGoToCapture}
         style={{ backgroundColor: WARM.tan }}
         className="px-8 py-3 rounded-full text-white font-semibold text-sm shadow-md"
@@ -295,6 +283,65 @@ function AnalysisEmptyState({ onGoToCapture }) {
         Start Deep Analysis
       </motion.button>
     </motion.div>
+  );
+}
+
+// Face guide overlay — oval with corner brackets
+function FaceGuideOverlay({ analyzing, deepLoading }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Oval face guide */}
+      <div style={{ position: "relative", width: 200, height: 260 }}>
+        <svg width="200" height="260" viewBox="0 0 200 260" fill="none">
+          {/* Darkened outer area cutout effect */}
+          <ellipse cx="100" cy="130" rx="88" ry="112"
+            stroke={analyzing || deepLoading ? WARM.tan : "rgba(255,255,255,0.7)"}
+            strokeWidth="2.5"
+            strokeDasharray={analyzing || deepLoading ? "8 4" : "none"}
+          />
+          {/* Corner bracket — top left */}
+          <path d="M24 60 L24 40 L44 40" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
+          {/* Corner bracket — top right */}
+          <path d="M176 60 L176 40 L156 40" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
+          {/* Corner bracket — bottom left */}
+          <path d="M24 200 L24 220 L44 220" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
+          {/* Corner bracket — bottom right */}
+          <path d="M176 200 L176 220 L156 220" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
+        </svg>
+
+        {/* Scanning line animation */}
+        {(analyzing || deepLoading) && (
+          <motion.div
+            animate={{ top: ["15%", "85%", "15%"] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            style={{
+              position: "absolute",
+              left: "8%",
+              right: "8%",
+              height: 2,
+              background: `linear-gradient(90deg, transparent, ${WARM.tan}, transparent)`,
+              borderRadius: 2,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Center hint text — only when camera is on but not analyzing */}
+      {!analyzing && !deepLoading && (
+        <div style={{
+          position: "absolute",
+          bottom: 16,
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "rgba(0,0,0,0.45)",
+          borderRadius: 20,
+          padding: "4px 12px",
+          whiteSpace: "nowrap",
+        }}>
+          <p style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>Center your face in the oval</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -319,7 +366,6 @@ function App({ session }) {
   const [activeConcern, setActiveConcern] = useState(null);
   const [activeAnalysisTitle, setActiveAnalysisTitle] = useState(null);
 
-  // Profile state
   const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -383,14 +429,12 @@ function App({ session }) {
     setEditingName(false);
   };
 
-  // Handle skin concern card click
   const handleConcernClick = (concern) => {
     if (!isSubscribed) {
       setPaywallConcern(concern.label);
       setShowPaywall(true);
       return;
     }
-    // Subscribed — go to scan with concern pre-selected
     setActiveConcern(concern.label);
     setView("scan");
   };
@@ -420,6 +464,7 @@ function App({ session }) {
     const video = videoRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    // Draw unmirrored to canvas — the visual mirror is CSS only
     canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
   };
@@ -457,14 +502,12 @@ function App({ session }) {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),
       });
-
       if (response.status === 402) {
         setPaywallConcern(null);
         setShowPaywall(true);
         setDeepLoading(false);
         return;
       }
-
       const data = await response.json();
       setSavedDeepAnalysis(data.deep_analysis);
       setActiveAnalysisTitle(activeConcern ? `${activeConcern} Focus` : null);
@@ -487,9 +530,7 @@ function App({ session }) {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       });
       const data = await res.json();
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-      }
+      if (data.checkout_url) window.location.href = data.checkout_url;
     } catch (err) {
       setError("Failed to start checkout. Please try again.");
       setCheckoutLoading(false);
@@ -554,7 +595,6 @@ function App({ session }) {
   return (
     <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen pb-24">
 
-      {/* Paywall Modal */}
       <AnimatePresence>
         {showPaywall && (
           <PaywallModal
@@ -566,7 +606,6 @@ function App({ session }) {
         )}
       </AnimatePresence>
 
-      {/* Top Header */}
       <motion.header
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -581,8 +620,7 @@ function App({ session }) {
           <p style={{ color: WARM.tan }} className="text-xs">Your Personal Skin Advisor</p>
         </motion.div>
         <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.93 }}
+          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }}
           onClick={() => setView("profile")}
           style={{ backgroundColor: view === "profile" ? WARM.tan : WARM.beige }}
           className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm transition-colors duration-200"
@@ -591,7 +629,6 @@ function App({ session }) {
         </motion.button>
       </motion.header>
 
-      {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8 overflow-hidden">
         <AnimatePresence mode="wait">
 
@@ -632,11 +669,9 @@ function App({ session }) {
                 >→</motion.button>
               </motion.div>
 
-              {/* Trials remaining badge */}
               {!isSubscribed && trialsRemaining !== null && trialsRemaining !== undefined && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   style={{ backgroundColor: trialsRemaining === 0 ? "#FEF3C7" : WARM.cream, borderColor: trialsRemaining === 0 ? "#F59E0B" : WARM.beige }}
                   className="w-full max-w-md rounded-2xl border p-4 flex items-center justify-between"
                 >
@@ -654,18 +689,14 @@ function App({ session }) {
                       onClick={() => { setPaywallConcern(null); setShowPaywall(true); }}
                       style={{ backgroundColor: WARM.tan }}
                       className="px-4 py-2 rounded-full text-white text-xs font-semibold shadow-sm"
-                    >
-                      Upgrade
-                    </motion.button>
+                    >Upgrade</motion.button>
                   )}
                 </motion.div>
               )}
 
-              {/* Subscribed badge */}
               {isSubscribed && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   style={{ backgroundColor: WARM.cream, borderColor: WARM.sage }}
                   className="w-full max-w-md rounded-2xl border p-4 flex items-center gap-3"
                 >
@@ -679,9 +710,7 @@ function App({ session }) {
 
               {history.length > 0 && history[0].scores && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
                   style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                   className="w-full max-w-md rounded-3xl border p-6 shadow-sm"
                 >
@@ -701,28 +730,20 @@ function App({ session }) {
                 </motion.div>
               )}
 
-              {/* Skin concern cards */}
               <div className="w-full max-w-md">
                 <div className="flex items-center justify-between mb-4">
                   <p style={{ color: WARM.darkBrown }} className="font-bold text-lg">Explore by Skin Concern</p>
                   {!isSubscribed && (
-                    <span style={{ backgroundColor: WARM.tan }} className="text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                      Premium
-                    </span>
+                    <span style={{ backgroundColor: WARM.tan }} className="text-white text-xs font-bold px-2.5 py-1 rounded-full">Premium</span>
                   )}
                 </div>
                 <motion.div variants={stagger} initial="initial" animate="animate" className="grid grid-cols-2 gap-3">
                   {skinConcerns.map((concern) => (
                     <motion.div
-                      key={concern.label}
-                      variants={item}
+                      key={concern.label} variants={item}
                       whileHover={{ scale: 1.03, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
                       whileTap={{ scale: 0.97 }}
-                      style={{
-                        backgroundColor: WARM.cream,
-                        borderColor: isSubscribed ? WARM.beige : WARM.beige,
-                        opacity: 1,
-                      }}
+                      style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                       className="rounded-2xl border p-4 cursor-pointer transition-all relative overflow-hidden"
                       onClick={() => handleConcernClick(concern)}
                     >
@@ -748,37 +769,28 @@ function App({ session }) {
                   {activeConcern ? `${activeConcern} Scan` : "Skin Scan"}
                 </h2>
                 <p style={{ color: WARM.tan }} className="text-sm mt-1">
-                  {activeConcern
-                    ? `Analysis will focus on ${activeConcern.toLowerCase()}`
-                    : "Position your face in good lighting"}
+                  {activeConcern ? `Analysis will focus on ${activeConcern.toLowerCase()}` : "Position your face in the oval"}
                 </p>
               </div>
 
-              {/* Active concern badge */}
               {activeConcern && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   style={{ backgroundColor: WARM.cream, borderColor: WARM.tan }}
                   className="w-full max-w-lg rounded-2xl border px-4 py-2.5 flex items-center justify-between"
                 >
                   <p style={{ color: WARM.darkBrown }} className="text-xs font-medium">
                     Focus: <span style={{ color: WARM.tan }} className="font-bold">{activeConcern}</span>
                   </p>
-                  <button
-                    onClick={() => setActiveConcern(null)}
-                    style={{ color: WARM.brown }}
-                    className="text-xs"
-                  >
-                    Clear ✕
-                  </button>
+                  <button onClick={() => setActiveConcern(null)} style={{ color: WARM.brown }} className="text-xs">Clear ✕</button>
                 </motion.div>
               )}
 
-              {/* Trials badge */}
               {!isSubscribed && trialsRemaining !== null && (
-                <div style={{ backgroundColor: trialsRemaining === 0 ? "#FEF3C7" : WARM.cream, borderColor: trialsRemaining === 0 ? "#F59E0B" : WARM.beige }}
-                  className="w-full max-w-lg rounded-2xl border px-4 py-2.5 flex items-center justify-between">
+                <div
+                  style={{ backgroundColor: trialsRemaining === 0 ? "#FEF3C7" : WARM.cream, borderColor: trialsRemaining === 0 ? "#F59E0B" : WARM.beige }}
+                  className="w-full max-w-lg rounded-2xl border px-4 py-2.5 flex items-center justify-between"
+                >
                   <p style={{ color: WARM.darkBrown }} className="text-xs font-medium">
                     {trialsRemaining === 0
                       ? "No free deep analyses left — subscribe to unlock"
@@ -797,23 +809,63 @@ function App({ session }) {
                 style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full max-w-lg rounded-3xl border overflow-hidden shadow-md"
               >
-                <div className="relative bg-stone-900">
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-80 object-cover" />
+                {/* Camera viewport — oval clip with mirrored video */}
+                <div className="relative bg-stone-900 flex items-center justify-center" style={{ height: 340 }}>
+
+                  {/* Oval clip container */}
+                  <div style={{
+                    width: 280,
+                    height: 320,
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    position: "relative",
+                    boxShadow: `0 0 0 4px ${WARM.beige}`,
+                  }}>
+                    {/* Mirrored video — CSS only, canvas capture stays unmirrored */}
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        transform: "scaleX(-1)", // Mirror for natural selfie feel
+                      }}
+                    />
+                  </div>
+
+                  {/* Camera off placeholder */}
                   {!cameraOn && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    <motion.div
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="absolute inset-0 flex flex-col items-center justify-center gap-3"
-                      style={{ backgroundColor: "#1C1208" }}>
+                      style={{ backgroundColor: "#1C1208" }}
+                    >
                       <motion.div
                         animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}
                         style={{ backgroundColor: WARM.beige }}
-                        className="w-20 h-20 rounded-full flex items-center justify-center text-4xl">📷</motion.div>
+                        className="w-20 h-20 rounded-full flex items-center justify-center text-4xl"
+                      >📷</motion.div>
                       <p style={{ color: WARM.beige }} className="text-sm">Camera is off</p>
                     </motion.div>
                   )}
+
+                  {/* Face guide overlay — shown when camera is on */}
+                  {cameraOn && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <FaceGuideOverlay analyzing={analyzing} deepLoading={deepLoading} />
+                    </div>
+                  )}
+
+                  {/* Analyzing spinner overlay */}
                   {(analyzing || deepLoading) && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    <motion.div
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="absolute inset-0 flex flex-col items-center justify-center gap-4"
-                      style={{ backgroundColor: "rgba(28,18,8,0.85)" }}>
+                      style={{ backgroundColor: "rgba(28,18,8,0.75)" }}
+                    >
                       <div className="relative flex items-center justify-center">
                         <motion.div animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
                           transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
@@ -1118,9 +1170,7 @@ function App({ session }) {
                       <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                         onClick={() => { setPaywallConcern(null); setShowPaywall(true); }}
                         style={{ backgroundColor: WARM.tan }}
-                        className="text-xs font-semibold px-3 py-1 rounded-full text-white">
-                        Upgrade
-                      </motion.button>
+                        className="text-xs font-semibold px-3 py-1 rounded-full text-white">Upgrade</motion.button>
                     )}
                   </div>
                 </motion.div>
@@ -1164,7 +1214,6 @@ function App({ session }) {
         </AnimatePresence>
       </div>
 
-      {/* Bottom Navigation */}
       <motion.nav
         initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
