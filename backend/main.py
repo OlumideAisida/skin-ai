@@ -17,6 +17,7 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
 def strip_emojis(text: str) -> str:
     emoji_pattern = re.compile(
         "[\U0001F000-\U0001FFFF"
@@ -52,6 +53,7 @@ claude = anthropic.Anthropic(api_key=api_key)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
@@ -151,15 +153,98 @@ async def db_update(table: str, filters: dict, data: dict):
 
 
 async def get_user_profile(user_id: str):
-    profiles = await db_select("profiles", {"id": user_id}, limit=1)
-    if not profiles or len(profiles) == 0:
-        await db_insert("profiles", {
-            "id": user_id,
-            "deep_analysis_count": 0,
-            "is_subscribed": False,
-        })
+    try:
+        profiles = await db_select("profiles", {"id": user_id}, limit=1)
+        if not profiles or not isinstance(profiles, list) or len(profiles) == 0:
+            result = await db_insert("profiles", {
+                "id": user_id,
+                "deep_analysis_count": 0,
+                "is_subscribed": False,
+            })
+            if isinstance(result, dict) and result.get("code"):
+                print(f"⚠️ Profile insert warning: {result}")
+            return {"id": user_id, "deep_analysis_count": 0, "is_subscribed": False}
+        return profiles[0]
+    except Exception as e:
+        print(f"❌ get_user_profile error: {e}")
         return {"id": user_id, "deep_analysis_count": 0, "is_subscribed": False}
-    return profiles[0]
+
+
+# ── RAG: Embedding + Retrieval ────────────────────────────────
+async def get_embedding(text: str) -> list:
+    """Get text embedding from OpenAI."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                "https://api.openai.com/v1/embeddings",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "text-embedding-3-small",
+                    "input": text,
+                },
+                timeout=15,
+            )
+        data = res.json()
+        return data["data"][0]["embedding"]
+    except Exception as e:
+        print(f"⚠️ Embedding error: {e}")
+        return None
+
+
+async def retrieve_clinical_context(query: str, top_k: int = 3) -> str:
+    """Retrieve relevant dermatology KB entries via vector similarity search."""
+    embedding = await get_embedding(query)
+    if not embedding:
+        return ""
+
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                f"{SUPABASE_URL}/rest/v1/rpc/match_dermatology_kb",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "query_embedding": embedding,
+                    "match_count": top_k,
+                },
+                timeout=15,
+            )
+        results = res.json()
+
+        if not results or not isinstance(results, list):
+            return ""
+
+        # Format retrieved context into a structured block
+        context_parts = []
+        for r in results:
+            condition = r.get("condition_name", "")
+            content = r.get("content", "")
+            fitzpatrick = r.get("fitzpatrick_relevance", "")
+            similarity = r.get("similarity", 0)
+
+            if similarity > 0.3:  # Only include reasonably relevant results
+                context_parts.append(
+                    f"CONDITION: {condition}\n"
+                    f"SKIN TONE NOTE: {fitzpatrick}\n"
+                    f"CLINICAL CONTEXT: {content[:600]}"
+                )
+
+        if not context_parts:
+            return ""
+
+        return "\n\n---\n\n".join(context_parts)
+
+    except Exception as e:
+        print(f"⚠️ RAG retrieval error: {e}")
+        return ""
 
 
 # ── Models ────────────────────────────────────────────────────
@@ -180,6 +265,19 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     with open(frame_path, "wb") as f:
         f.write(image_bytes)
 
+    # Build RAG query from concern or general skin analysis
+    rag_query = payload.concern if payload.concern else "facial skin analysis acne hyperpigmentation"
+    clinical_context = await retrieve_clinical_context(rag_query, top_k=3)
+
+    rag_block = ""
+    if clinical_context:
+        rag_block = (
+            f"\n\nCLINICAL KNOWLEDGE BASE (use this to ground your analysis):\n"
+            f"{clinical_context}\n\n"
+            f"Use the above clinical context to make your recommendations specific and evidence-based. "
+            f"Reference specific ingredients, treatments, and skin tone considerations from the context."
+        )
+
     concern_context = ""
     if payload.concern:
         concern_context = (
@@ -190,7 +288,7 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
 
     report_msg = claude.messages.create(
         model="claude-haiku-4-5",
-        max_tokens=1024,
+        max_tokens=1200,
         messages=[
             {
                 "role": "user",
@@ -217,9 +315,11 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
                             "4. Affected Zones (table: Forehead / Nose / Cheeks / Chin)\n"
                             "5. Severity Rating (Mild / Moderate / Severe with one sentence justification)\n"
                             "6. Skin Breakdown (texture, pore size, oil level, hydration level — one line each)\n"
-                            "7. Top 3 Recommendations (specific to detected issues and skin tone)\n\n"
-                            "Keep the report under 300 words. Be direct, specific, and clinically "
-                            "structured. End with a one-line medical disclaimer."
+                            "7. Top 3 Recommendations (specific ingredients and treatments — cite the clinical context below)\n\n"
+                            "Keep the report under 350 words. Be direct, specific, and clinically "
+                            "structured. Reference specific ingredients from the clinical context. "
+                            "End with a one-line medical disclaimer."
+                            + rag_block
                             + concern_context
                         ),
                     },
@@ -230,29 +330,29 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     analysis_text = report_msg.content[0].text
 
     scores_msg = claude.messages.create(
-    model="claude-haiku-4-5",
-    max_tokens=256,
-    messages=[
-        {
-            "role": "user",
-            "content": (
-                f"Based on this skin analysis report:\n\n{analysis_text}\n\n"
-                "Return ONLY a valid JSON object with these exact keys and integer values 0-100.\n\n"
-                "SCORING RULES — be precise and differentiated, never default to 65-75:\n"
-                "- skin_health: overall skin condition. 85-100=excellent, 70-84=good, 50-69=moderate issues, 30-49=significant issues, 0-29=severe\n"
-                "- moisture: hydration level. 85+=well hydrated, 60-84=adequate, 40-59=slightly dry, 20-39=dry, 0-19=very dry\n"
-                "- clarity: absence of blemishes/hyperpigmentation/uneven tone. 85+=very clear, 60-84=minor issues, 40-59=moderate, 20-39=significant, 0-19=severe\n"
-                "- evenness: skin tone uniformity. 85+=very even, 60-84=minor variation, 40-59=moderate unevenness, 20-39=significant, 0-19=severe\n"
-                "- severity: severity of detected issues (higher=worse). 0-19=none, 20-39=mild, 40-59=moderate, 60-79=significant, 80-100=severe\n\n"
-                "Base scores STRICTLY on what the report says. If report says mild issues score 55-65. "
-                "If report says no issues score 80-90. Never give 70 as a default.\n\n"
-                '{"skin_health": <score>, "moisture": <score>, "clarity": <score>, '
-                '"evenness": <score>, "severity": <score>}\n'
-                "Return only the JSON. No explanation, no markdown."
-            ),
-        }
-    ],
-)
+        model="claude-haiku-4-5",
+        max_tokens=256,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"Based on this skin analysis report:\n\n{analysis_text}\n\n"
+                    "Return ONLY a valid JSON object with these exact keys and integer values 0-100.\n\n"
+                    "SCORING RULES — be precise and differentiated, never default to 65-75:\n"
+                    "- skin_health: overall skin condition. 85-100=excellent, 70-84=good, 50-69=moderate issues, 30-49=significant issues, 0-29=severe\n"
+                    "- moisture: hydration level. 85+=well hydrated, 60-84=adequate, 40-59=slightly dry, 20-39=dry, 0-19=very dry\n"
+                    "- clarity: absence of blemishes/hyperpigmentation/uneven tone. 85+=very clear, 60-84=minor issues, 40-59=moderate, 20-39=significant, 0-19=severe\n"
+                    "- evenness: skin tone uniformity. 85+=very even, 60-84=minor variation, 40-59=moderate unevenness, 20-39=significant, 0-19=severe\n"
+                    "- severity: severity of detected issues (higher=worse). 0-19=none, 20-39=mild, 40-59=moderate, 60-79=significant, 80-100=severe\n\n"
+                    "Base scores STRICTLY on what the report says. If report says mild issues score 55-65. "
+                    "If report says no issues score 80-90. Never give 70 as a default.\n\n"
+                    '{"skin_health": <score>, "moisture": <score>, "clarity": <score>, '
+                    '"evenness": <score>, "severity": <score>}\n'
+                    "Return only the JSON. No explanation, no markdown."
+                ),
+            }
+        ],
+    )
 
     try:
         scores = json.loads(scores_msg.content[0].text.strip())
@@ -326,6 +426,20 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
     except Exception:
         pass
 
+    # RAG retrieval — broader query for deep analysis
+    rag_query = payload.concern if payload.concern else "facial skin deep analysis hyperpigmentation acne fitzpatrick skin tone"
+    clinical_context = await retrieve_clinical_context(rag_query, top_k=4)
+
+    rag_block = ""
+    if clinical_context:
+        rag_block = (
+            f"\n\nCLINICAL KNOWLEDGE BASE (ground all recommendations in this evidence):\n"
+            f"{clinical_context}\n\n"
+            f"IMPORTANT: Use specific ingredients, treatments, and Fitzpatrick-appropriate recommendations "
+            f"from the clinical context above. Do not give generic advice — every recommendation must "
+            f"reference a specific ingredient or evidence-based practice from the context."
+        )
+
     comparison_context = ""
     if previous_analysis:
         comparison_context = (
@@ -362,37 +476,40 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
                             "You are an advanced dermatology AI assistant. Analyze this facial image "
                             "across all Fitzpatrick skin tones (I-VI) with full cultural competence.\n\n"
                             "Return ONLY a valid JSON object with this exact structure. "
-                            "No markdown, no explanation, just the JSON:\n\n"
+                            "No markdown, no explanation, just the JSON.\n\n"
+                            "CRITICAL: Every recommendation must reference specific ingredients, "
+                            "treatments, or evidence-based practices from the clinical knowledge base provided. "
+                            "Never give vague generic advice — be clinically specific.\n\n"
                             "{\n"
                             '  "skin_assessment": {\n'
                             '    "fitzpatrick": "Type X — one line description",\n'
-                            '    "summary": ["bullet 1", "bullet 2", "bullet 3"],\n'
+                            '    "summary": ["specific observation 1", "specific observation 2", "specific observation 3"],\n'
                             '    "detail": ["pore condition detail", "oil balance detail", "active issue with location"]\n'
                             '  },\n'
                             '  "nutrition": {\n'
-                            '    "summary": ["key nutrient to increase", "top food to add"],\n'
-                            '    "detail": ["nutrient 2", "nutrient 3", "food to reduce", "hydration tip"]\n'
+                            '    "summary": ["specific nutrient with reason", "specific food with benefit"],\n'
+                            '    "detail": ["specific nutrient 2", "specific nutrient 3", "food to reduce with reason", "hydration tip"]\n'
                             '  },\n'
                             '  "skincare": {\n'
-                            '    "summary": ["morning step 1", "morning step 2"],\n'
-                            '    "detail": ["evening step 1", "evening step 2", "ingredient to look for", "ingredient to avoid"]\n'
+                            '    "summary": ["specific ingredient morning step 1 with concentration", "specific ingredient morning step 2"],\n'
+                            '    "detail": ["specific evening step 1 with ingredient", "specific evening step 2", "specific ingredient to look for", "specific ingredient to avoid with reason"]\n'
                             '  },\n'
                             '  "lifestyle": {\n'
-                            '    "summary": ["most impactful lifestyle tip", "second tip"],\n'
-                            '    "detail": ["sleep recommendation", "stress management tip", "exercise consideration"]\n'
+                            '    "summary": ["most impactful lifestyle tip with mechanism", "second tip with reason"],\n'
+                            '    "detail": ["sleep recommendation with skin benefit", "stress management tip", "exercise consideration"]\n'
                             '  },\n'
                             '  "progress": {\n'
                             '    "summary": ["current skin health summary in one sentence", "top metric to track this week"],\n'
-                            '    "detail": ["expected improvement 1", "expected improvement 2"]\n'
+                            '    "detail": ["expected improvement timeline 1", "expected improvement timeline 2"]\n'
                             '  },\n'
                             '  "action_plan": {\n'
-                            '    "summary": ["priority action 1", "priority action 2", "priority action 3"],\n'
+                            '    "summary": ["priority action 1 with specific product type", "priority action 2", "priority action 3"],\n'
                             '    "detail": ["priority action 4", "priority action 5"]\n'
                             '  },\n'
                             '  "disclaimer": "One line medical disclaimer."\n'
                             "}\n\n"
-                            "Each bullet point should be one concise sentence. "
-                            "Be specific to the detected skin tone and visible conditions."
+                            "Each bullet point should be one concise, clinically specific sentence."
+                            + rag_block
                             + concern_context
                             + comparison_context
                         ),
@@ -449,7 +566,6 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
 
     trials_remaining = None if is_subscribed else max(0, FREE_DEEP_ANALYSIS_LIMIT - (deep_count + 1))
 
-    # Strip emojis from all string values in deep_data
     def clean_deep_data(obj):
         if isinstance(obj, str):
             return strip_emojis(obj)
@@ -582,4 +698,4 @@ async def get_profile(user=Depends(get_current_user)):
 # ── Status ────────────────────────────────────────────────────
 @app.get("/")
 def root():
-    return {"status": "SkinAI backend is running"}
+    return {"status": "SkinAI backend is running — RAG enabled"}
