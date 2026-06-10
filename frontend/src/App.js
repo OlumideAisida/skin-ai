@@ -819,7 +819,8 @@ function App({ session }) {
                     borderRadius: "50%",
                     overflow: "hidden",
                     position: "relative",
-                    boxShadow: `0 0 0 4px ${WARM.beige}`,
+                    border: `3px solid ${WARM.beige}`,
+                    willChange: "transform",
                   }}>
                     {/* Mirrored video — CSS only, canvas capture stays unmirrored */}
                     <video
