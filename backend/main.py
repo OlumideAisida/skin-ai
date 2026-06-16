@@ -311,9 +311,10 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
 "in this image across all Fitzpatrick skin tones (I-VI). "
 "Be culturally competent — do not assume lighter skin.\n\n"
 "Return a SHORT, punchy report with ONLY these 3 sections:\n"
-"1. Skin Tone — Fitzpatrick type in one line\n"
-"2. Top 3 Issues — numbered list, each on its own line, one line each, be specific\n"
-"3. Recommended Routine — numbered list, each on its own line, 2 specific product/ingredient steps\n\n"
+"1. Skin Tone: — Fitzpatrick type in one line\n"
+"               Top 3 Issues — numbered list, each on its own line, one line each, be specific\n"
+
+"               Recommended Routine — numbered list, each on its own line, 2 specific product/ingredient steps\n\n"
 "STRICT LIMIT: Under 120 words total. Format sections 2 and 3 as numbered lists with each item on a new line. "
 "No tables, no long explanations. End with one line: "
 "'✦ Run a Deep Analysis for your full personalized skin report.'"
