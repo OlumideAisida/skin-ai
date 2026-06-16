@@ -835,7 +835,7 @@ function App({ session }) {
         initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         style={{ backgroundColor: WARM.cream, borderBottomColor: WARM.beige }}
-        className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-40"
+        className="border-b px-4 py-3 flex items-center justify-between sticky top-0 z-40"
       >
         <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.2 }}>
           <h1 style={{ color: WARM.darkBrown }} className="font-bold text-xl tracking-tight">
@@ -853,7 +853,7 @@ function App({ session }) {
         </motion.button>
       </motion.header>
 
-      <div className="max-w-4xl mx-auto px-4 py-8 overflow-hidden">
+      <div className="max-w-4xl mx-auto px-4 py-6 overflow-x-hidden w-full">
         <AnimatePresence mode="wait">
 
           {/* HOME VIEW */}
@@ -1443,7 +1443,7 @@ function App({ session }) {
         style={{ backgroundColor: WARM.cream, borderTopColor: WARM.beige }}
         className="fixed bottom-0 left-0 right-0 border-t z-50 px-2 py-2"
       >
-        <div className="max-w-md mx-auto flex items-center justify-around">
+        <div className="max-w-md mx-auto flex items-center justify-around w-full">
           {navItems.map(({ id, label, icon: Icon }) => {
             const active = view === id;
             return (
