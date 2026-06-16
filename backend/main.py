@@ -172,7 +172,6 @@ async def get_user_profile(user_id: str):
 
 # ── RAG: Embedding + Retrieval ────────────────────────────────
 async def get_embedding(text: str) -> list:
-    """Get text embedding from OpenAI."""
     if not OPENAI_API_KEY:
         return None
     try:
@@ -183,10 +182,7 @@ async def get_embedding(text: str) -> list:
                     "Authorization": f"Bearer {OPENAI_API_KEY}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": "text-embedding-3-small",
-                    "input": text,
-                },
+                json={"model": "text-embedding-3-small", "input": text},
                 timeout=15,
             )
         data = res.json()
@@ -197,11 +193,9 @@ async def get_embedding(text: str) -> list:
 
 
 async def retrieve_clinical_context(query: str, top_k: int = 3) -> str:
-    """Retrieve relevant dermatology KB entries via vector similarity search."""
     embedding = await get_embedding(query)
     if not embedding:
         return ""
-
     try:
         async with httpx.AsyncClient() as client:
             res = await client.post(
@@ -211,45 +205,60 @@ async def retrieve_clinical_context(query: str, top_k: int = 3) -> str:
                     "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "query_embedding": embedding,
-                    "match_count": top_k,
-                },
+                json={"query_embedding": embedding, "match_count": top_k},
                 timeout=15,
             )
         results = res.json()
-
         if not results or not isinstance(results, list):
             return ""
-
-        # Format retrieved context into a structured block
         context_parts = []
         for r in results:
             condition = r.get("condition_name", "")
             content = r.get("content", "")
             fitzpatrick = r.get("fitzpatrick_relevance", "")
             similarity = r.get("similarity", 0)
-
-            if similarity > 0.3:  # Only include reasonably relevant results
+            if similarity > 0.3:
                 context_parts.append(
                     f"CONDITION: {condition}\n"
                     f"SKIN TONE NOTE: {fitzpatrick}\n"
                     f"CLINICAL CONTEXT: {content[:600]}"
                 )
-
         if not context_parts:
             return ""
-
         return "\n\n---\n\n".join(context_parts)
-
     except Exception as e:
         print(f"⚠️ RAG retrieval error: {e}")
         return ""
 
 
+# ── Helper: build user context block ─────────────────────────
+def build_user_context(fitzpatrick_type, gender) -> str:
+    if not fitzpatrick_type and not gender:
+        return ""
+    fitz_map = {
+        1: "Type I (very fair)",
+        2: "Type II (fair)",
+        3: "Type III (medium)",
+        4: "Type IV (olive)",
+        5: "Type V (brown)",
+        6: "Type VI (dark brown/black)",
+    }
+    fitz_label = fitz_map.get(fitzpatrick_type, "")
+    gender_label = gender.replace("_", " ") if gender else ""
+    lines = ["\n\nUSER PROFILE:"]
+    if fitz_label:
+        lines.append(f"- Fitzpatrick Skin Type: {fitz_label}")
+    if gender_label:
+        lines.append(f"- Gender: {gender_label}")
+    lines.append(
+        "Tailor ALL recommendations specifically to this skin type and gender. "
+        "For darker skin tones (Type IV-VI), prioritize PIH prevention and culturally competent recommendations."
+    )
+    return "\n".join(lines)
+
+
 # ── Models ────────────────────────────────────────────────────
 class ImagePayload(BaseModel):
-
     image: str
     concern: str = None
     fitzpatrick_type: int = None
@@ -268,7 +277,7 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
     with open(frame_path, "wb") as f:
         f.write(image_bytes)
 
-    # Build RAG query from concern or general skin analysis
+    # RAG retrieval
     rag_query = payload.concern if payload.concern else "facial skin analysis acne hyperpigmentation"
     clinical_context = await retrieve_clinical_context(rag_query, top_k=3)
 
@@ -280,6 +289,8 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
             f"Use the above clinical context to make your recommendations specific and evidence-based. "
             f"Reference specific ingredients, treatments, and skin tone considerations from the context."
         )
+
+    user_context = build_user_context(payload.fitzpatrick_type, payload.gender)
 
     concern_context = ""
     if payload.concern:
@@ -308,17 +319,17 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
                         "type": "text",
                         "text": (
                             "You are a clinical skin analysis assistant. Analyze the facial skin "
-"in this image across all Fitzpatrick skin tones (I-VI). "
-"Be culturally competent — do not assume lighter skin.\n\n"
-"Return a SHORT, punchy report with ONLY these 3 sections:\n"
-"1. Skin Tone: — Fitzpatrick type in one line\n"
-"               Top 3 Issues — numbered list, each on its own line, one line each, be specific\n"
-
-"               Recommended Routine — numbered list, each on its own line, 2 specific product/ingredient steps\n\n"
-"STRICT LIMIT: Under 120 words total. Format sections 2 and 3 as numbered lists with each item on a new line. "
-"No tables, no long explanations. End with one line: "
-"'✦ Run a Deep Analysis for your full personalized skin report.'"
+                            "in this image across all Fitzpatrick skin tones (I-VI). "
+                            "Be culturally competent — do not assume lighter skin.\n\n"
+                            "Return a SHORT, punchy report with ONLY these 3 sections:\n"
+                            "1. Skin Tone — Fitzpatrick type in one line\n"
+                            "2. Top 3 Issues — numbered list, each on its own line, one line each, be specific\n"
+                            "3. Recommended Routine — numbered list, each on its own line, 2 specific product/ingredient steps\n\n"
+                            "STRICT LIMIT: Under 120 words total. Format sections 2 and 3 as numbered lists with each item on a new line. "
+                            "No tables, no long explanations. End with one line: "
+                            "'✦ Run a Deep Analysis for your full personalized skin report.'"
                             + rag_block
+                            + user_context
                             + concern_context
                         ),
                     },
@@ -425,7 +436,7 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
     except Exception:
         pass
 
-    # RAG retrieval — broader query for deep analysis
+    # RAG retrieval
     rag_query = payload.concern if payload.concern else "facial skin deep analysis hyperpigmentation acne fitzpatrick skin tone"
     clinical_context = await retrieve_clinical_context(rag_query, top_k=4)
 
@@ -438,6 +449,8 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
             f"from the clinical context above. Do not give generic advice — every recommendation must "
             f"reference a specific ingredient or evidence-based practice from the context."
         )
+
+    user_context = build_user_context(payload.fitzpatrick_type, payload.gender)
 
     comparison_context = ""
     if previous_analysis:
@@ -509,6 +522,7 @@ async def deep_analyze(payload: ImagePayload, user=Depends(get_current_user)):
                             "}\n\n"
                             "Each bullet point should be one concise, clinically specific sentence."
                             + rag_block
+                            + user_context
                             + concern_context
                             + comparison_context
                         ),
@@ -607,10 +621,7 @@ async def create_checkout_session(user=Depends(get_current_user)):
         session = stripe.checkout.Session.create(
             customer=stripe_customer_id,
             payment_method_types=["card"],
-            line_items=[{
-                "price": STRIPE_PRICE_ID,
-                "quantity": 1,
-            }],
+            line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
             mode="subscription",
             success_url=f"{FRONTEND_URL}?payment=success",
             cancel_url=f"{FRONTEND_URL}?payment=cancelled",
@@ -694,10 +705,13 @@ async def get_profile(user=Depends(get_current_user)):
         "fitzpatrick_type": profile.get("fitzpatrick_type"),
         "gender": profile.get("gender"),
     }
+
+
 # ── Onboarding ────────────────────────────────────────────────
 class OnboardPayload(BaseModel):
     fitzpatrick_type: int = None
     gender: str = None
+
 
 @app.post("/profile/onboard")
 async def onboard_profile(payload: OnboardPayload, user=Depends(get_current_user)):
