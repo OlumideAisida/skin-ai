@@ -26,6 +26,23 @@ const fadeUp = {
 const stagger = { animate: { transition: { staggerChildren: 0.08 } } };
 const item = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
+// Fitzpatrick skin tone options with visual swatches
+const FITZPATRICK_OPTIONS = [
+  { type: 1, label: "Type I", desc: "Very fair, always burns", color: "#FDDBB4" },
+  { type: 2, label: "Type II", desc: "Fair, usually burns", color: "#F5C89C" },
+  { type: 3, label: "Type III", desc: "Medium, sometimes burns", color: "#D4956A" },
+  { type: 4, label: "Type IV", desc: "Olive, rarely burns", color: "#B5743A" },
+  { type: 5, label: "Type V", desc: "Brown, very rarely burns", color: "#8B5A2B" },
+  { type: 6, label: "Type VI", desc: "Dark brown/black, never burns", color: "#4A2C0A" },
+];
+
+const GENDER_OPTIONS = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+  { value: "non-binary", label: "Non-binary" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
 function ScoreRing({ value, label, color }) {
   return (
     <motion.div
@@ -96,9 +113,7 @@ function AnalysisSection({ title, summaryItems, detailItems }) {
       className="rounded-2xl border p-4 mb-3"
     >
       <div className="flex items-center justify-between mb-2">
-        <p style={{ color: WARM.brown }} className="font-bold italic text-xs uppercase tracking-wider">
-          {title}
-        </p>
+        <p style={{ color: WARM.brown }} className="font-bold italic text-xs uppercase tracking-wider">{title}</p>
         {detailItems && detailItems.length > 0 && (
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -143,9 +158,7 @@ function AnalysisSection({ title, summaryItems, detailItems }) {
 function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ backgroundColor: "rgba(74, 53, 32, 0.6)", backdropFilter: "blur(4px)" }}
     >
@@ -158,8 +171,7 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
         className="w-full max-w-sm rounded-3xl border p-8 shadow-2xl"
       >
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+          initial={{ scale: 0 }} animate={{ scale: 1 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 400 }}
           style={{ backgroundColor: WARM.tan }}
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 shadow-md"
@@ -176,12 +188,7 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
         </p>
         <div style={{ backgroundColor: WARM.softWhite, borderColor: WARM.beige }}
           className="rounded-2xl border p-4 mb-6 space-y-2">
-          {[
-            "Unlimited deep skin analyses",
-            "Concern-focused targeted reports",
-            "Full nutrition & diet recommendations",
-            "Personalized skincare routines",
-          ].map((feat, i) => (
+          {["Unlimited deep skin analyses", "Concern-focused targeted reports", "Full nutrition & diet recommendations", "Personalized skincare routines"].map((feat, i) => (
             <div key={i} className="flex items-center gap-2">
               <span style={{ color: WARM.sage }} className="text-sm">✓</span>
               <p style={{ color: WARM.darkBrown }} className="text-xs">{feat}</p>
@@ -200,13 +207,8 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
         >
           {loading ? "Redirecting to checkout..." : "Subscribe — $4.99/month"}
         </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }} onClick={onClose}
-          style={{ color: WARM.brown }}
-          className="w-full text-center text-xs mt-3 py-2"
-        >
-          Maybe later
-        </motion.button>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={onClose} style={{ color: WARM.brown }}
+          className="w-full text-center text-xs mt-3 py-2">Maybe later</motion.button>
       </motion.div>
     </motion.div>
   );
@@ -215,9 +217,7 @@ function PaywallModal({ onSubscribe, onClose, loading, concernContext }) {
 function AnalysisEmptyState({ onGoToCapture }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
       className="w-full max-w-lg flex flex-col items-center justify-center gap-6 py-12"
     >
       <motion.div className="relative">
@@ -238,7 +238,7 @@ function AnalysisEmptyState({ onGoToCapture }) {
             <circle cx="28.2" cy="31.8" r="1" fill="white"/>
             <circle cx="46.2" cy="31.8" r="1" fill="white"/>
             <path d="M27 44 Q36 51 45 44" stroke={WARM.brown} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-            <motion.g animate={{ opacity: [0, 0.6, 0] }} transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}>
+            <motion.g animate={{ opacity: [0, 0.6, 0] }} transition={{ repeat: Infinity, duration: 2.5 }}>
               <line x1="14" y1="28" x2="58" y2="28" stroke={WARM.tan} strokeWidth="0.8" strokeDasharray="3 3"/>
               <line x1="14" y1="36" x2="58" y2="36" stroke={WARM.tan} strokeWidth="0.8" strokeDasharray="3 3"/>
               <line x1="14" y1="44" x2="58" y2="44" stroke={WARM.tan} strokeWidth="0.8" strokeDasharray="3 3"/>
@@ -250,8 +250,7 @@ function AnalysisEmptyState({ onGoToCapture }) {
           </svg>
         </motion.div>
         <motion.div
-          animate={{ y: [0, -4, 0] }}
-          transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+          animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 2.8 }}
           style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
           className="absolute -right-6 top-6 border rounded-xl px-2.5 py-1.5 shadow-sm"
         >
@@ -259,8 +258,7 @@ function AnalysisEmptyState({ onGoToCapture }) {
           <p style={{ color: WARM.brown, fontSize: 9 }} className="text-xs">Clarity</p>
         </motion.div>
         <motion.div
-          animate={{ y: [0, -4, 0] }}
-          transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut", delay: 0.6 }}
+          animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 3.2, delay: 0.6 }}
           style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
           className="absolute -left-6 bottom-8 border rounded-xl px-2.5 py-1.5 shadow-sm"
         >
@@ -276,72 +274,250 @@ function AnalysisEmptyState({ onGoToCapture }) {
       </div>
       <motion.button
         whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-        onClick={onGoToCapture}
-        style={{ backgroundColor: WARM.tan }}
+        onClick={onGoToCapture} style={{ backgroundColor: WARM.tan }}
         className="px-8 py-3 rounded-full text-white font-semibold text-sm shadow-md"
-      >
-        Start Deep Analysis
-      </motion.button>
+      >Start Deep Analysis</motion.button>
     </motion.div>
   );
 }
 
-// Face guide overlay — oval with corner brackets
 function FaceGuideOverlay({ analyzing, deepLoading }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      {/* Oval face guide */}
       <div style={{ position: "relative", width: 200, height: 260 }}>
         <svg width="200" height="260" viewBox="0 0 200 260" fill="none">
-          {/* Darkened outer area cutout effect */}
           <ellipse cx="100" cy="130" rx="88" ry="112"
             stroke={analyzing || deepLoading ? WARM.tan : "rgba(255,255,255,0.7)"}
             strokeWidth="2.5"
             strokeDasharray={analyzing || deepLoading ? "8 4" : "none"}
           />
-          {/* Corner bracket — top left */}
           <path d="M24 60 L24 40 L44 40" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
-          {/* Corner bracket — top right */}
           <path d="M176 60 L176 40 L156 40" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
-          {/* Corner bracket — bottom left */}
           <path d="M24 200 L24 220 L44 220" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
-          {/* Corner bracket — bottom right */}
           <path d="M176 200 L176 220 L156 220" stroke={WARM.tan} strokeWidth="3" strokeLinecap="round" fill="none"/>
         </svg>
-
-        {/* Scanning line animation */}
         {(analyzing || deepLoading) && (
           <motion.div
             animate={{ top: ["15%", "85%", "15%"] }}
             transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
             style={{
-              position: "absolute",
-              left: "8%",
-              right: "8%",
-              height: 2,
+              position: "absolute", left: "8%", right: "8%", height: 2,
               background: `linear-gradient(90deg, transparent, ${WARM.tan}, transparent)`,
               borderRadius: 2,
             }}
           />
         )}
       </div>
-
-      {/* Center hint text — only when camera is on but not analyzing */}
       {!analyzing && !deepLoading && (
         <div style={{
-          position: "absolute",
-          bottom: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          backgroundColor: "rgba(0,0,0,0.45)",
-          borderRadius: 20,
-          padding: "4px 12px",
-          whiteSpace: "nowrap",
+          position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
+          backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 20, padding: "4px 12px", whiteSpace: "nowrap",
         }}>
           <p style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>Center your face in the oval</p>
         </div>
       )}
     </div>
+  );
+}
+
+// ── Onboarding Screen ─────────────────────────────────────────
+function OnboardingScreen({ onComplete, userEmail, BACKEND, getToken }) {
+  const [step, setStep] = useState(1); // 1 = skin tone, 2 = gender
+  const [selectedFitzpatrick, setSelectedFitzpatrick] = useState(null);
+  const [selectedGender, setSelectedGender] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleComplete = async () => {
+    setSaving(true);
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND}/profile/onboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          fitzpatrick_type: selectedFitzpatrick,
+          gender: selectedGender,
+        }),
+      });
+    } catch (e) {
+      console.error("Onboarding save error:", e);
+    } finally {
+      setSaving(false);
+      onComplete({ fitzpatrick_type: selectedFitzpatrick, gender: selectedGender });
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ backgroundColor: WARM.softWhite }}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center px-4 py-8"
+    >
+      {/* Header */}
+      <motion.div
+        initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="text-center mb-8"
+      >
+        <h1 style={{ color: WARM.darkBrown }} className="font-bold text-3xl tracking-tight mb-1">
+          Skin<span style={{ color: WARM.tan }}>AI</span>
+        </h1>
+        <p style={{ color: WARM.tan }} className="text-sm">Let's personalize your experience</p>
+      </motion.div>
+
+      {/* Progress dots */}
+      <div className="flex gap-2 mb-8">
+        {[1, 2].map((s) => (
+          <motion.div
+            key={s}
+            animate={{ width: step === s ? 24 : 8, backgroundColor: step === s ? WARM.tan : WARM.beige }}
+            transition={{ duration: 0.3 }}
+            className="h-2 rounded-full"
+          />
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
+
+        {/* Step 1 — Skin Tone */}
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.3 }}
+            className="w-full max-w-sm"
+          >
+            <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+              className="rounded-3xl border p-6 shadow-sm">
+              <h2 style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-1">What's your skin tone?</h2>
+              <p style={{ color: WARM.tan }} className="text-xs mb-5">
+                This helps us give you Fitzpatrick-accurate recommendations.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {FITZPATRICK_OPTIONS.map((opt) => (
+                  <motion.button
+                    key={opt.type}
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedFitzpatrick(opt.type)}
+                    style={{
+                      backgroundColor: selectedFitzpatrick === opt.type ? WARM.beige : WARM.softWhite,
+                      borderColor: selectedFitzpatrick === opt.type ? WARM.tan : WARM.beige,
+                      borderWidth: selectedFitzpatrick === opt.type ? 2 : 1,
+                    }}
+                    className="rounded-2xl border p-3 flex items-center gap-3 transition-all text-left"
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      backgroundColor: opt.color,
+                      border: `2px solid ${WARM.beige}`,
+                      flexShrink: 0,
+                    }} />
+                    <div>
+                      <p style={{ color: WARM.darkBrown }} className="text-xs font-semibold">{opt.label}</p>
+                      <p style={{ color: WARM.brown }} className="text-xs leading-tight" style={{ fontSize: 10 }}>{opt.desc}</p>
+                    </div>
+                    {selectedFitzpatrick === opt.type && (
+                      <motion.div
+                        initial={{ scale: 0 }} animate={{ scale: 1 }}
+                        style={{ color: WARM.tan }}
+                        className="ml-auto text-sm"
+                      >✓</motion.div>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => setStep(2)}
+                disabled={!selectedFitzpatrick}
+                style={{ backgroundColor: selectedFitzpatrick ? WARM.tan : WARM.beige }}
+                className="w-full mt-5 py-3 rounded-full text-white font-semibold text-sm shadow-md disabled:opacity-50 transition-colors"
+              >
+                Continue →
+              </motion.button>
+
+              <button
+                onClick={() => { setSelectedFitzpatrick(null); setStep(2); }}
+                style={{ color: WARM.brown }}
+                className="w-full text-center text-xs mt-3 py-1"
+              >
+                Skip for now
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 2 — Gender */}
+        {step === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.3 }}
+            className="w-full max-w-sm"
+          >
+            <div style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
+              className="rounded-3xl border p-6 shadow-sm">
+              <h2 style={{ color: WARM.darkBrown }} className="font-bold text-lg mb-1">What's your gender?</h2>
+              <p style={{ color: WARM.tan }} className="text-xs mb-5">
+                Hormonal factors affect skin differently — this helps tailor your analysis.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                {GENDER_OPTIONS.map((opt) => (
+                  <motion.button
+                    key={opt.value}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedGender(opt.value)}
+                    style={{
+                      backgroundColor: selectedGender === opt.value ? WARM.beige : WARM.softWhite,
+                      borderColor: selectedGender === opt.value ? WARM.tan : WARM.beige,
+                      borderWidth: selectedGender === opt.value ? 2 : 1,
+                    }}
+                    className="rounded-2xl border px-4 py-3 flex items-center justify-between transition-all"
+                  >
+                    <p style={{ color: WARM.darkBrown }} className="text-sm font-medium">{opt.label}</p>
+                    {selectedGender === opt.value && (
+                      <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} style={{ color: WARM.tan }}>✓</motion.span>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="flex gap-3 mt-5">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setStep(1)}
+                  style={{ borderColor: WARM.beige, color: WARM.brown }}
+                  className="flex-1 py-3 rounded-full border text-sm font-medium"
+                >
+                  ← Back
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleComplete}
+                  disabled={saving}
+                  style={{ backgroundColor: WARM.tan }}
+                  className="flex-2 flex-grow py-3 rounded-full text-white font-semibold text-sm shadow-md disabled:opacity-60"
+                >
+                  {saving ? "Saving..." : "Get Started ✦"}
+                </motion.button>
+              </div>
+
+              <button
+                onClick={() => { setSelectedGender(null); handleComplete(); }}
+                style={{ color: WARM.brown }}
+                className="w-full text-center text-xs mt-3 py-1"
+              >
+                Skip for now
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -366,10 +542,17 @@ function App({ session }) {
   const [activeConcern, setActiveConcern] = useState(null);
   const [activeAnalysisTitle, setActiveAnalysisTitle] = useState(null);
 
+  // Profile state
   const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
   const [notifications, setNotifications] = useState(true);
+  const [fitzpatrickType, setFitzpatrickType] = useState(null);
+  const [gender, setGender] = useState(null);
+
+  // Onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const BACKEND = "https://skin-ai-production-d736.up.railway.app";
   const userEmail = session?.user?.email || "";
@@ -401,8 +584,17 @@ function App({ session }) {
       const data = await res.json();
       setIsSubscribed(data.is_subscribed);
       setTrialsRemaining(data.trials_remaining);
+      setFitzpatrickType(data.fitzpatrick_type);
+      setGender(data.gender);
+
+      // Show onboarding if fitzpatrick_type is not set
+      if (!data.fitzpatrick_type) {
+        setShowOnboarding(true);
+      }
+      setProfileLoaded(true);
     } catch (err) {
       console.error("Failed to fetch profile");
+      setProfileLoaded(true);
     }
   };
 
@@ -427,6 +619,12 @@ function App({ session }) {
       localStorage.setItem(`skinai_name_${userEmail}`, tempName.trim());
     }
     setEditingName(false);
+  };
+
+  const handleOnboardingComplete = (data) => {
+    setFitzpatrickType(data.fitzpatrick_type);
+    setGender(data.gender);
+    setShowOnboarding(false);
   };
 
   const handleConcernClick = (concern) => {
@@ -464,7 +662,6 @@ function App({ session }) {
     const video = videoRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    // Draw unmirrored to canvas — the visual mirror is CSS only
     canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
   };
@@ -478,7 +675,12 @@ function App({ session }) {
       const response = await fetch(`${BACKEND}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),
+        body: JSON.stringify({
+          image: base64Image,
+          ...(activeConcern && { concern: activeConcern }),
+          ...(fitzpatrickType && { fitzpatrick_type: fitzpatrickType }),
+          ...(gender && { gender }),
+        }),
       });
       const data = await response.json();
       setResult(data.analysis);
@@ -500,7 +702,12 @@ function App({ session }) {
       const response = await fetch(`${BACKEND}/analyze/deep`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ image: base64Image, ...(activeConcern && { concern: activeConcern }) }),
+        body: JSON.stringify({
+          image: base64Image,
+          ...(activeConcern && { concern: activeConcern }),
+          ...(fitzpatrickType && { fitzpatrick_type: fitzpatrickType }),
+          ...(gender && { gender }),
+        }),
       });
       if (response.status === 402) {
         setPaywallConcern(null);
@@ -592,9 +799,26 @@ function App({ session }) {
     { label: "Protection", desc: "SPF & defense" },
   ];
 
+  const fitzpatrickLabel = fitzpatrickType
+    ? FITZPATRICK_OPTIONS.find(f => f.type === fitzpatrickType)?.label || `Type ${fitzpatrickType}`
+    : null;
+
   return (
     <div style={{ backgroundColor: WARM.softWhite }} className="min-h-screen pb-24">
 
+      {/* Onboarding overlay */}
+      <AnimatePresence>
+        {showOnboarding && profileLoaded && (
+          <OnboardingScreen
+            onComplete={handleOnboardingComplete}
+            userEmail={userEmail}
+            BACKEND={BACKEND}
+            getToken={getToken}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Paywall Modal */}
       <AnimatePresence>
         {showPaywall && (
           <PaywallModal
@@ -606,9 +830,9 @@ function App({ session }) {
         )}
       </AnimatePresence>
 
+      {/* Top Header */}
       <motion.header
-        initial={{ y: -60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         style={{ backgroundColor: WARM.cream, borderBottomColor: WARM.beige }}
         className="border-b px-6 py-4 flex items-center justify-between sticky top-0 z-40"
@@ -761,7 +985,7 @@ function App({ session }) {
             </motion.div>
           )}
 
-          {/* SCAN / CAPTURE VIEW */}
+          {/* SCAN VIEW */}
           {view === "scan" && (
             <motion.div key="scan" {...fadeUp} className="flex flex-col items-center gap-6">
               <div className="text-center">
@@ -809,38 +1033,17 @@ function App({ session }) {
                 style={{ backgroundColor: WARM.cream, borderColor: WARM.beige }}
                 className="w-full max-w-lg rounded-3xl border overflow-hidden shadow-md"
               >
-                {/* Camera viewport — oval clip with mirrored video */}
                 <div className="relative bg-stone-900 flex items-center justify-center" style={{ height: 340 }}>
-
-                  {/* Oval clip container */}
                   <div style={{
-                    width: 280,
-                    height: 320,
-                    borderRadius: "50%",
-                    overflow: "hidden",
-                    position: "relative",
-                    border: `3px solid ${WARM.beige}`,
-                    willChange: "transform",
+                    width: 280, height: 320, borderRadius: "50%", overflow: "hidden",
+                    position: "relative", border: `3px solid ${WARM.beige}`, willChange: "transform",
                   }}>
-                    {/* Mirrored video — CSS only, canvas capture stays unmirrored */}
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        transform: "scaleX(-1)", // Mirror for natural selfie feel
-                      }}
+                    <video ref={videoRef} autoPlay playsInline muted
+                      style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
                     />
                   </div>
-
-                  {/* Camera off placeholder */}
                   {!cameraOn && (
-                    <motion.div
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="absolute inset-0 flex flex-col items-center justify-center gap-3"
                       style={{ backgroundColor: "#1C1208" }}
                     >
@@ -852,18 +1055,13 @@ function App({ session }) {
                       <p style={{ color: WARM.beige }} className="text-sm">Camera is off</p>
                     </motion.div>
                   )}
-
-                  {/* Face guide overlay — shown when camera is on */}
                   {cameraOn && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <FaceGuideOverlay analyzing={analyzing} deepLoading={deepLoading} />
                     </div>
                   )}
-
-                  {/* Analyzing spinner overlay */}
                   {(analyzing || deepLoading) && (
-                    <motion.div
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="absolute inset-0 flex flex-col items-center justify-center gap-4"
                       style={{ backgroundColor: "rgba(28,18,8,0.75)" }}
                     >
@@ -883,7 +1081,6 @@ function App({ session }) {
                     </motion.div>
                   )}
                 </div>
-
                 <div style={{ backgroundColor: WARM.cream }} className="px-5 py-4 flex justify-center gap-3 flex-wrap">
                   {!cameraOn ? (
                     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -969,7 +1166,6 @@ function App({ session }) {
                   {activeAnalysisTitle ? `Focused on: ${activeAnalysisTitle}` : "Your deep skin analysis results"}
                 </p>
               </div>
-
               {savedDeepAnalysis ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
@@ -993,22 +1189,16 @@ function App({ session }) {
                     </div>
                     <p style={{ color: WARM.darkBrown }} className="font-bold text-base">Deep Analysis Report</p>
                   </div>
-
                   <motion.div variants={stagger} initial="initial" animate="animate">
                     {deepSections.map((sec) => {
                       const sectionData = savedDeepAnalysis[sec.key];
                       if (!sectionData) return null;
                       return (
-                        <AnalysisSection
-                          key={sec.key}
-                          title={sec.title}
-                          summaryItems={sectionData.summary || []}
-                          detailItems={sectionData.detail || []}
-                        />
+                        <AnalysisSection key={sec.key} title={sec.title}
+                          summaryItems={sectionData.summary || []} detailItems={sectionData.detail || []} />
                       );
                     })}
                   </motion.div>
-
                   {savedDeepAnalysis.disclaimer && (
                     <p style={{ color: WARM.beige }} className="text-xs text-center mt-4 px-4">
                       {savedDeepAnalysis.disclaimer}
@@ -1064,7 +1254,6 @@ function App({ session }) {
                   </motion.div>
                 )}
               </div>
-
               <div className="flex-1">
                 <AnimatePresence mode="wait">
                   {selectedReport ? (
@@ -1159,6 +1348,39 @@ function App({ session }) {
                 <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
                   <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Email</p>
                   <p style={{ color: WARM.darkBrown }} className="text-sm">{userEmail}</p>
+                </motion.div>
+
+                {/* Skin Tone row */}
+                <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
+                  <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Skin Tone</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {fitzpatrickType && (
+                        <div style={{
+                          width: 18, height: 18, borderRadius: "50%",
+                          backgroundColor: FITZPATRICK_OPTIONS.find(f => f.type === fitzpatrickType)?.color || WARM.beige,
+                          border: `1.5px solid ${WARM.beige}`,
+                        }} />
+                      )}
+                      <p style={{ color: WARM.darkBrown }} className="text-sm font-medium">
+                        {fitzpatrickLabel || "Not set"}
+                      </p>
+                    </div>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowOnboarding(true)}
+                      style={{ color: WARM.tan, borderColor: WARM.beige }}
+                      className="text-xs font-medium border px-3 py-1 rounded-full">
+                      {fitzpatrickType ? "Change" : "Set"}
+                    </motion.button>
+                  </div>
+                </motion.div>
+
+                {/* Gender row */}
+                <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">
+                  <p style={{ color: WARM.tan }} className="text-xs font-medium mb-1 uppercase tracking-wide">Gender</p>
+                  <p style={{ color: WARM.darkBrown }} className="text-sm font-medium capitalize">
+                    {gender ? gender.replace(/_/g, " ") : "Not set"}
+                  </p>
                 </motion.div>
 
                 <motion.div variants={item} style={{ borderBottomColor: WARM.beige }} className="border-b px-6 py-4">

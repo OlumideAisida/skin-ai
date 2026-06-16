@@ -249,8 +249,11 @@ async def retrieve_clinical_context(query: str, top_k: int = 3) -> str:
 
 # ── Models ────────────────────────────────────────────────────
 class ImagePayload(BaseModel):
+
     image: str
     concern: str = None
+    fitzpatrick_type: int = None
+    gender: str = None
 
 
 # ── Basic scan ────────────────────────────────────────────────
@@ -692,7 +695,25 @@ async def get_profile(user=Depends(get_current_user)):
         "is_subscribed": profile.get("is_subscribed", False),
         "deep_analysis_count": profile.get("deep_analysis_count", 0),
         "trials_remaining": max(0, FREE_DEEP_ANALYSIS_LIMIT - profile.get("deep_analysis_count", 0)),
+        "fitzpatrick_type": profile.get("fitzpatrick_type"),
+        "gender": profile.get("gender"),
     }
+# ── Onboarding ────────────────────────────────────────────────
+class OnboardPayload(BaseModel):
+    fitzpatrick_type: int = None
+    gender: str = None
+
+@app.post("/profile/onboard")
+async def onboard_profile(payload: OnboardPayload, user=Depends(get_current_user)):
+    user_id = user["id"]
+    update_data = {}
+    if payload.fitzpatrick_type is not None:
+        update_data["fitzpatrick_type"] = payload.fitzpatrick_type
+    if payload.gender is not None:
+        update_data["gender"] = payload.gender
+    if update_data:
+        await db_update("profiles", {"id": user_id}, update_data)
+    return {"updated": True}
 
 
 # ── Status ────────────────────────────────────────────────────
