@@ -308,20 +308,15 @@ async def analyze_skin(payload: ImagePayload, user=Depends(get_current_user)):
                         "type": "text",
                         "text": (
                             "You are a clinical skin analysis assistant. Analyze the facial skin "
-                            "in this image across all Fitzpatrick skin tones (I-VI). "
-                            "Be culturally competent — do not assume lighter skin.\n\n"
-                            "LIGHTING: If poorly lit, note it and adjust confidence.\n\n"
-                            "Return a structured report with these sections:\n"
-                            "1. Skin Tone (Fitzpatrick estimate + what it means for analysis)\n"
-                            "2. Overall Condition (2-3 sentences on general skin health)\n"
-                            "3. Key Issues (max 4 bullet points — type, location, severity)\n"
-                            "4. Affected Zones (table: Forehead / Nose / Cheeks / Chin)\n"
-                            "5. Severity Rating (Mild / Moderate / Severe with one sentence justification)\n"
-                            "6. Skin Breakdown (texture, pore size, oil level, hydration level — one line each)\n"
-                            "7. Top 3 Recommendations (specific ingredients and treatments — cite the clinical context below)\n\n"
-                            "Keep the report under 350 words. Be direct, specific, and clinically "
-                            "structured. Reference specific ingredients from the clinical context. "
-                            "End with a one-line medical disclaimer."
+"in this image across all Fitzpatrick skin tones (I-VI). "
+"Be culturally competent — do not assume lighter skin.\n\n"
+"Return a SHORT, punchy report with ONLY these 3 sections:\n"
+"1. Skin Tone — Fitzpatrick type in one line\n"
+"2. Top 3 Issues — bullet points only, one line each, be specific\n"
+"3. Quick Wins — 2 specific product/ingredient recommendations\n\n"
+"STRICT LIMIT: Under 120 words total. Be direct and specific. "
+"No tables, no long explanations. End with one line: "
+"'✦ Run a Deep Analysis for your full personalized skin report.'"
                             + rag_block
                             + concern_context
                         ),
